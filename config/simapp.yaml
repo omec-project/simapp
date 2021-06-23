@@ -1,0 +1,56 @@
+configuration:
+  info:
+    description: SIMAPP initial local configuration
+    version: 1.0.0
+  logger:
+    APP:
+      ReportCaller: false
+      debugLevel: info
+  device-groups:
+  - name:  "iot-camera"
+    imsis:
+      - "123456789123456"
+      - "123456789123457"
+    ip-domain-name: "pool1"
+    ip-domain-expanded:
+      dnn: internet
+      dns-primary: 8.8.8.8
+      mtu: 1460
+      ue-ip-pool: 10.91.0.0/16
+    site-info: "menlo"
+  network-slices:
+  - name: "slice1"
+    slice-id:
+      sd: 65565
+      sst: 255
+    site-device-group: 
+    - "iot-camera"
+    applications-information:
+    - app-name: iot-app
+      end-port: 40000
+      endpoint: 1.1.1.1/32
+      protocol: 17
+      start-port: 40000
+    deny-applications:
+    - iot-app-deny
+    permit-applications:
+    - iot-app1-permit
+    - iot-app2-permit
+    qos:
+      downlink: 20000000
+      traffic-class: platinum
+      uplink: 4000000
+    site-device-group:
+    - iot-camera1
+    - iot-camera2
+    site-info:
+      gNodeBs:
+      - name: menlo-gnb1
+        tac: 1
+      plmn:
+        mcc: "315"
+        mnc: "010"
+      site-name: menlo
+      upf:
+        upf-name: upf.menlo.aetherproject.org
+        upf-port: 8805
