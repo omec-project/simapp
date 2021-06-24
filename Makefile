@@ -39,7 +39,7 @@ docker-build:
 
 docker-push:
 	for target in $(DOCKER_TARGETS); do \
-		docker push ${DOCKER_REGISTRY}${DOCKER_REPOSITORY}5gc-$$target:${DOCKER_TAG}; \
+		docker push ${DOCKER_REGISTRY}${DOCKER_REPOSITORY}$$target:${DOCKER_TAG}; \
 	done
 
 
