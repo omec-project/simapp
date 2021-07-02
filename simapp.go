@@ -61,8 +61,8 @@ type NetworkSlice struct {
 }
 
 type SliceId struct {
-	Sst int `yaml:"sst,omitempty" json:"sst,omitempty"`
-	Sd  int `yaml:"sd,omitempty" json:"sd,omitempty"`
+	Sst string `yaml:"sst,omitempty" json:"sst,omitempty"`
+	Sd  string `yaml:"sd,omitempty" json:"sd,omitempty"`
 }
 
 type QosInfo struct {
