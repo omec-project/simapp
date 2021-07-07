@@ -11,6 +11,17 @@ configuration:
     APP:
       ReportCaller: false
       debugLevel: info
+  subscribers:
+  - ueId: 123456789123456
+    plmnId: 20893
+    opc: 8e27b6af0e692e750f32667a3b14605d
+    key: 8baf473f2f8fd09487cccbd7097c6862
+    sequenceNumber: 16f3b3f70fc2
+  - ueId: 123456789123457
+    plmnId: 20893
+    opc: 8e27b6af0e692e750f32667a3b14605d
+    key: 8baf473f2f8fd09487cccbd7097c6862
+    sequenceNumber: 16f3b3f70fc2
   device-groups:
   - name:  "iot-camera"
     imsis:

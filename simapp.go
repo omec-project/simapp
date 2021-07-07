@@ -32,6 +32,7 @@ type Configuration struct {
 	ConfigSlice  bool            `yaml:"provision-network-slice,omitempty"`
 	DevGroup     []*DevGroup     `yaml:"device-groups,omitempty"`
 	NetworkSlice []*NetworkSlice `yaml:"network-slices,omitempty"`
+	Subscriber []*Subscriber `yaml:"subscribers,omitempty"`
 }
 
 type DevGroup struct {
@@ -47,6 +48,14 @@ type IpDomain struct {
 	DnsPrimary string `yaml:"dns-primary,omitempty" json:"dns-primary,omitempty"`
 	Mtu        int    `yaml:"mtu,omitempty" json:"mtu,omitempty"`
 	UePool     string `yaml:"ue-ip-pool,omitempty" json:"ue-ip-pool,omitempty"`
+}
+
+type Subscriber struct {
+	UeId            string   `yaml:"ueId,omitempty" json:"ueId,omitempty"`
+	PlmnId          string   `yaml:"plmnId,omitempty" json:"plmnId,omitempty"`
+	OPc             string   `yaml:"opc,omitempty" json:"opc,omitempty"`
+	Key             string   `yaml:"key,omitempty" json:"key,omitempty"`
+	SequenceNumber  string   `yaml:"sequenceNumber,omitempty" json:"sequenceNumber,omitempty"`
 }
 
 type NetworkSlice struct {
@@ -104,6 +113,7 @@ type AppInfo struct {
 const (
 	device_group = iota
 	network_slice
+	subsriber
 )
 
 type configMessage struct {
@@ -130,6 +140,31 @@ func InitConfigFactory(f string, configMsgChan chan configMessage) error {
 	if SimappConfig.Configuration == nil {
 		fmt.Println("Configuration Parsing Failed ", SimappConfig.Configuration)
 		return nil
+	}
+
+	fmt.Println("Number of subscribers", len(SimappConfig.Configuration.Subscriber))
+	for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
+		subscriber := SimappConfig.Configuration.Subscriber[o]
+		fmt.Println("Subscribers:", subscriber.UeId)
+		fmt.Println("    UeId", subscriber.UeId)
+		fmt.Println("    PlmnId", subscriber.PlmnId)
+		fmt.Println("    OPc", subscriber.OPc)
+		fmt.Println("    Key", subscriber.Key)
+		fmt.Println("    SequenceNumber", subscriber.SequenceNumber)
+
+		b, err := json.Marshal(subscriber)
+		if err != nil {
+			fmt.Println("error in marshal with subscriber", err)
+			continue
+		}
+
+		reqMsgBody := bytes.NewBuffer(b)
+
+		var msg configMessage
+		msg.msgPtr = reqMsgBody
+		msg.msgType = subsriber
+		msg.name    = subscriber.UeId
+		configMsgChan <- msg
 	}
 
 	fmt.Println("Number of device Groups ", len(SimappConfig.Configuration.DevGroup))
@@ -162,7 +197,7 @@ func InitConfigFactory(f string, configMsgChan chan configMessage) error {
 		var msg configMessage
 		msg.msgPtr = reqMsgBody
 		msg.msgType = device_group
-        msg.name    = group.Name
+		msg.name    = group.Name
 		configMsgChan <- msg
 	}
 
@@ -235,6 +270,7 @@ func main() {
 func sendMessage(msgChan chan configMessage) {
 	var devGroupHttpend string
 	var networkSliceHttpend string
+	var subscriberHttpend string
 	for {
 		ip, err := net.ResolveIPAddr("ip", "webui")
 		if err != nil {
@@ -247,6 +283,8 @@ func sendMessage(msgChan chan configMessage) {
 		fmt.Println("device trigger  http endpoint ", devGroupHttpend)
 		networkSliceHttpend = "http://" + ip.String() + ":9089/config/v1/network-slice/"
 		fmt.Println("network slice http endpoint ", devGroupHttpend)
+		subscriberHttpend = "http://127.0.0.7" + ip.String() + ":5000/api/"
+		fmt.Println("subscriber http endpoint ", subscriberHttpend)
 		break
 	}
 	for {
@@ -259,6 +297,8 @@ func sendMessage(msgChan chan configMessage) {
 				httpend = devGroupHttpend + msg.name
 			case network_slice:
 				httpend = networkSliceHttpend + msg.name
+			case subsriber:
+				httpend = subscriberHttpend + msg.name
 			}
 
 			for {
@@ -278,7 +318,7 @@ func sendMessage(msgChan chan configMessage) {
 					time.Sleep(1 * time.Second)
 					continue
 				}
-				fmt.Printf("Message Post %v Success\n", devGroupHttpend)
+				fmt.Printf("Message Post %v Success\n", httpend)
 				break
 			}
 		}
