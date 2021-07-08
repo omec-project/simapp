@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"time"
+	"strconv"
 )
 
 type Config struct {
@@ -52,6 +53,8 @@ type IpDomain struct {
 
 type Subscriber struct {
 	UeId            string   `yaml:"ueId,omitempty" json:"ueId,omitempty"`
+	UeIdStart       string   `yaml:"ueId-start,omitempty" json:"ueId-start,omitempty"`
+	UeIdEnd         string   `yaml:"ueId-end,omitempty" json:"ueId-end,omitempty"`
 	PlmnId          string   `yaml:"plmnId,omitempty" json:"plmnId,omitempty"`
 	OPc             string   `yaml:"opc,omitempty" json:"opc,omitempty"`
 	Key             string   `yaml:"key,omitempty" json:"key,omitempty"`
@@ -113,7 +116,7 @@ type AppInfo struct {
 const (
 	device_group = iota
 	network_slice
-	subsriber
+	SUBSCRIBER
 )
 
 type configMessage struct {
@@ -142,29 +145,48 @@ func InitConfigFactory(f string, configMsgChan chan configMessage) error {
 		return nil
 	}
 
-	fmt.Println("Number of subscribers", len(SimappConfig.Configuration.Subscriber))
+	fmt.Println("Number of subscriber ranges", len(SimappConfig.Configuration.Subscriber))
 	for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
-		subscriber := SimappConfig.Configuration.Subscriber[o]
-		fmt.Println("Subscribers:", subscriber.UeId)
-		fmt.Println("    UeId", subscriber.UeId)
-		fmt.Println("    PlmnId", subscriber.PlmnId)
-		fmt.Println("    OPc", subscriber.OPc)
-		fmt.Println("    Key", subscriber.Key)
-		fmt.Println("    SequenceNumber", subscriber.SequenceNumber)
+		subscribers := SimappConfig.Configuration.Subscriber[o]
+		fmt.Println("Subscribers:")
+		fmt.Println("    UeIdStart", subscribers.UeIdStart)
+		fmt.Println("    UeIdEnd", subscribers.UeIdEnd)
+		fmt.Println("    PlmnId", subscribers.PlmnId)
+		fmt.Println("    OPc", subscribers.OPc)
+		fmt.Println("    Key", subscribers.Key)
+		fmt.Println("    SequenceNumber", subscribers.SequenceNumber)
 
-		b, err := json.Marshal(subscriber)
+		start, err := strconv.ParseUint(subscribers.UeIdStart, 0, 64)
 		if err != nil {
-			fmt.Println("error in marshal with subscriber", err)
-			continue
+				fmt.Println("error in ParseUint with UeIdStart", err)
+				continue
+			}
+		end, err := strconv.ParseUint(subscribers.UeIdEnd, 0, 64)
+		if err != nil {
+				fmt.Println("error in ParseUint with UeIdEnd", err)
+				continue
+			}
+		for i := start; i <= end; i++ {
+			subscribers.UeId = strconv.FormatUint(i, 10)
+			fmt.Println("    UeId", subscribers.UeId)
+			if err != nil {
+				fmt.Println("error in FormatUint with UeId", err)
+				continue
+			}
+			subscribers.UeIdStart = ""
+			subscribers.UeIdEnd = ""
+			b, err := json.Marshal(subscribers)
+			if err != nil {
+				fmt.Println("error in marshal with subscribers", err)
+				continue
+			}
+			reqMsgBody := bytes.NewBuffer(b)
+			var msg configMessage
+			msg.msgPtr = reqMsgBody
+			msg.msgType = SUBSCRIBER
+			msg.name    = subscribers.UeId
+			configMsgChan <- msg
 		}
-
-		reqMsgBody := bytes.NewBuffer(b)
-
-		var msg configMessage
-		msg.msgPtr = reqMsgBody
-		msg.msgType = subsriber
-		msg.name    = subscriber.UeId
-		configMsgChan <- msg
 	}
 
 	fmt.Println("Number of device Groups ", len(SimappConfig.Configuration.DevGroup))
@@ -283,7 +305,7 @@ func sendMessage(msgChan chan configMessage) {
 		fmt.Println("device trigger  http endpoint ", devGroupHttpend)
 		networkSliceHttpend = "http://" + ip.String() + ":9089/config/v1/network-slice/"
 		fmt.Println("network slice http endpoint ", devGroupHttpend)
-		subscriberHttpend = "http://127.0.0.7" + ip.String() + ":5000/api/"
+		subscriberHttpend = "http://" + ip.String() + ":5000/api/"
 		fmt.Println("subscriber http endpoint ", subscriberHttpend)
 		break
 	}
@@ -297,7 +319,7 @@ func sendMessage(msgChan chan configMessage) {
 				httpend = devGroupHttpend + msg.name
 			case network_slice:
 				httpend = networkSliceHttpend + msg.name
-			case subsriber:
+			case SUBSCRIBER:
 				httpend = subscriberHttpend + msg.name
 			}
 
