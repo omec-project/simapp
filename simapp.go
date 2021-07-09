@@ -34,6 +34,7 @@ type Configuration struct {
 	DevGroup     []*DevGroup     `yaml:"device-groups,omitempty"`
 	NetworkSlice []*NetworkSlice `yaml:"network-slices,omitempty"`
 	Subscriber []*Subscriber `yaml:"subscribers,omitempty"`
+	SubProvisionEndpt *SubProvisionEndpt `yaml:"sub_provision_endpt,omitempty"`
 }
 
 type DevGroup struct {
@@ -59,6 +60,11 @@ type Subscriber struct {
 	OPc             string   `yaml:"opc,omitempty" json:"opc,omitempty"`
 	Key             string   `yaml:"key,omitempty" json:"key,omitempty"`
 	SequenceNumber  string   `yaml:"sequenceNumber,omitempty" json:"sequenceNumber,omitempty"`
+}
+
+type SubProvisionEndpt struct {
+	Addr  string `yaml:"addr,omitempty" json:"addr,omitempty"`
+	Port  string `yaml:"port,omitempty" json:"port,omitempty"`
 }
 
 type NetworkSlice struct {
@@ -116,7 +122,7 @@ type AppInfo struct {
 const (
 	device_group = iota
 	network_slice
-	SUBSCRIBER
+	subscriber
 )
 
 type configMessage struct {
@@ -127,7 +133,7 @@ type configMessage struct {
 
 var SimappConfig Config
 
-func InitConfigFactory(f string, configMsgChan chan configMessage) error {
+func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionEndpt *SubProvisionEndpt) error {
 	fmt.Println("Function called ", f)
 	if content, err := ioutil.ReadFile(f); err != nil {
 		fmt.Println("Readfile failed called ", err)
@@ -183,11 +189,17 @@ func InitConfigFactory(f string, configMsgChan chan configMessage) error {
 			reqMsgBody := bytes.NewBuffer(b)
 			var msg configMessage
 			msg.msgPtr = reqMsgBody
-			msg.msgType = SUBSCRIBER
+			msg.msgType = subscriber
 			msg.name    = subscribers.UeId
 			configMsgChan <- msg
 		}
 	}
+
+	fmt.Println("Subscriber Provision Endpoint:")
+	fmt.Println("Address ", SimappConfig.Configuration.SubProvisionEndpt.Addr)
+	fmt.Println("Port ", SimappConfig.Configuration.SubProvisionEndpt.Port)
+	subProvisionEndpt.Addr = SimappConfig.Configuration.SubProvisionEndpt.Addr
+	subProvisionEndpt.Port = SimappConfig.Configuration.SubProvisionEndpt.Port
 
 	fmt.Println("Number of device Groups ", len(SimappConfig.Configuration.DevGroup))
 	for g := 0; g < len(SimappConfig.Configuration.DevGroup); g++ {
@@ -280,21 +292,28 @@ func InitConfigFactory(f string, configMsgChan chan configMessage) error {
 
 func main() {
 	configMsgChan := make(chan configMessage, 10)
+	var subProvisionEndpt SubProvisionEndpt
 
 	fmt.Println("SimApp started")
-	go sendMessage(configMsgChan)
-	InitConfigFactory("./config/simapp.yaml", configMsgChan)
+	InitConfigFactory("./config/simapp.yaml", configMsgChan, &subProvisionEndpt)
+	go sendMessage(configMsgChan, subProvisionEndpt)
 	for {
 		time.Sleep(100 * time.Second)
 	}
 }
 
-func sendMessage(msgChan chan configMessage) {
+func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt ) {
 	var devGroupHttpend string
 	var networkSliceHttpend string
 	var subscriberHttpend string
+
+	fmt.Println("Subscriber Provision Endpoint in sendMessage:")
+	fmt.Println("Address ", subProvisionEndpt.Addr)
+	fmt.Println("Port ", subProvisionEndpt.Port)
+
+
 	for {
-		ip, err := net.ResolveIPAddr("ip", "webui")
+		ip, err := net.ResolveIPAddr("ip", subProvisionEndpt.Addr)
 		if err != nil {
 			fmt.Println("failed to resolve name")
 			time.Sleep(10 * time.Second)
@@ -305,7 +324,7 @@ func sendMessage(msgChan chan configMessage) {
 		fmt.Println("device trigger  http endpoint ", devGroupHttpend)
 		networkSliceHttpend = "http://" + ip.String() + ":9089/config/v1/network-slice/"
 		fmt.Println("network slice http endpoint ", devGroupHttpend)
-		subscriberHttpend = "http://" + ip.String() + ":5000/api/"
+		subscriberHttpend = "http://" + ip.String() + ":" + subProvisionEndpt.Port + "/api/subscriber/imsi-"
 		fmt.Println("subscriber http endpoint ", subscriberHttpend)
 		break
 	}
@@ -319,7 +338,7 @@ func sendMessage(msgChan chan configMessage) {
 				httpend = devGroupHttpend + msg.name
 			case network_slice:
 				httpend = networkSliceHttpend + msg.name
-			case SUBSCRIBER:
+			case subscriber:
 				httpend = subscriberHttpend + msg.name
 			}
 
