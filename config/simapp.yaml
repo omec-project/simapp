@@ -11,6 +11,22 @@ configuration:
     APP:
       ReportCaller: false
       debugLevel: info
+  subscribers:
+  - ueId-start: 123456789123458
+    ueId-end: 123456789123458
+    plmnId: 20893
+    opc: 8e27b6af0e692e750f32667a3b14605d
+    key: 8baf473f2f8fd09487cccbd7097c6862
+    sequenceNumber: 16f3b3f70fc2
+  - ueId-start: 123456789123460
+    ueId-end: 123456789123465
+    plmnId: 222222
+    opc: 22222222222222222222222222222222
+    key: 22222222222222222222222222222222
+    sequenceNumber: 222222222
+  sub-provision-endpt:
+    addr: webui
+    port: 5000
   device-groups:
   - name:  "iot-camera"
     imsis:

@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"time"
+	"strconv"
 )
 
 type Config struct {
@@ -32,6 +33,8 @@ type Configuration struct {
 	ConfigSlice  bool            `yaml:"provision-network-slice,omitempty"`
 	DevGroup     []*DevGroup     `yaml:"device-groups,omitempty"`
 	NetworkSlice []*NetworkSlice `yaml:"network-slices,omitempty"`
+	Subscriber []*Subscriber `yaml:"subscribers,omitempty"`
+	SubProvisionEndpt *SubProvisionEndpt `yaml:"sub-provision-endpt,omitempty"`
 }
 
 type DevGroup struct {
@@ -47,6 +50,21 @@ type IpDomain struct {
 	DnsPrimary string `yaml:"dns-primary,omitempty" json:"dns-primary,omitempty"`
 	Mtu        int    `yaml:"mtu,omitempty" json:"mtu,omitempty"`
 	UePool     string `yaml:"ue-ip-pool,omitempty" json:"ue-ip-pool,omitempty"`
+}
+
+type Subscriber struct {
+	UeId            string
+	UeIdStart       string   `yaml:"ueId-start,omitempty" json:"ueId-start,omitempty"`
+	UeIdEnd         string   `yaml:"ueId-end,omitempty" json:"ueId-end,omitempty"`
+	PlmnId          string   `yaml:"plmnId,omitempty" json:"plmnId,omitempty"`
+	OPc             string   `yaml:"opc,omitempty" json:"opc,omitempty"`
+	Key             string   `yaml:"key,omitempty" json:"key,omitempty"`
+	SequenceNumber  string   `yaml:"sequenceNumber,omitempty" json:"sequenceNumber,omitempty"`
+}
+
+type SubProvisionEndpt struct {
+	Addr  string `yaml:"addr,omitempty" json:"addr,omitempty"`
+	Port  string `yaml:"port,omitempty" json:"port,omitempty"`
 }
 
 type NetworkSlice struct {
@@ -104,6 +122,7 @@ type AppInfo struct {
 const (
 	device_group = iota
 	network_slice
+	subscriber
 )
 
 type configMessage struct {
@@ -114,7 +133,7 @@ type configMessage struct {
 
 var SimappConfig Config
 
-func InitConfigFactory(f string, configMsgChan chan configMessage) error {
+func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionEndpt *SubProvisionEndpt) error {
 	fmt.Println("Function called ", f)
 	if content, err := ioutil.ReadFile(f); err != nil {
 		fmt.Println("Readfile failed called ", err)
@@ -131,6 +150,56 @@ func InitConfigFactory(f string, configMsgChan chan configMessage) error {
 		fmt.Println("Configuration Parsing Failed ", SimappConfig.Configuration)
 		return nil
 	}
+
+	fmt.Println("Number of subscriber ranges", len(SimappConfig.Configuration.Subscriber))
+	for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
+		subscribers := SimappConfig.Configuration.Subscriber[o]
+		fmt.Println("Subscribers:")
+		fmt.Println("    UeIdStart", subscribers.UeIdStart)
+		fmt.Println("    UeIdEnd", subscribers.UeIdEnd)
+		fmt.Println("    PlmnId", subscribers.PlmnId)
+		fmt.Println("    OPc", subscribers.OPc)
+		fmt.Println("    Key", subscribers.Key)
+		fmt.Println("    SequenceNumber", subscribers.SequenceNumber)
+
+		start, err := strconv.ParseUint(subscribers.UeIdStart, 0, 64)
+		if err != nil {
+				fmt.Println("error in ParseUint with UeIdStart", err)
+				continue
+			}
+		end, err := strconv.ParseUint(subscribers.UeIdEnd, 0, 64)
+		if err != nil {
+				fmt.Println("error in ParseUint with UeIdEnd", err)
+				continue
+			}
+		for i := start; i <= end; i++ {
+			subscribers.UeId = strconv.FormatUint(i, 10)
+			fmt.Println("    UeId", subscribers.UeId)
+			if err != nil {
+				fmt.Println("error in FormatUint with UeId", err)
+				continue
+			}
+			subscribers.UeIdStart = ""
+			subscribers.UeIdEnd = ""
+			b, err := json.Marshal(subscribers)
+			if err != nil {
+				fmt.Println("error in marshal with subscribers", err)
+				continue
+			}
+			reqMsgBody := bytes.NewBuffer(b)
+			var msg configMessage
+			msg.msgPtr = reqMsgBody
+			msg.msgType = subscriber
+			msg.name    = subscribers.UeId
+			configMsgChan <- msg
+		}
+	}
+
+	fmt.Println("Subscriber Provision Endpoint:")
+	fmt.Println("Address ", SimappConfig.Configuration.SubProvisionEndpt.Addr)
+	fmt.Println("Port ", SimappConfig.Configuration.SubProvisionEndpt.Port)
+	subProvisionEndpt.Addr = SimappConfig.Configuration.SubProvisionEndpt.Addr
+	subProvisionEndpt.Port = SimappConfig.Configuration.SubProvisionEndpt.Port
 
 	fmt.Println("Number of device Groups ", len(SimappConfig.Configuration.DevGroup))
 	for g := 0; g < len(SimappConfig.Configuration.DevGroup); g++ {
@@ -162,7 +231,7 @@ func InitConfigFactory(f string, configMsgChan chan configMessage) error {
 		var msg configMessage
 		msg.msgPtr = reqMsgBody
 		msg.msgType = device_group
-        msg.name    = group.Name
+		msg.name    = group.Name
 		configMsgChan <- msg
 	}
 
@@ -223,20 +292,28 @@ func InitConfigFactory(f string, configMsgChan chan configMessage) error {
 
 func main() {
 	configMsgChan := make(chan configMessage, 10)
+	var subProvisionEndpt SubProvisionEndpt
 
 	fmt.Println("SimApp started")
-	go sendMessage(configMsgChan)
-	InitConfigFactory("./config/simapp.yaml", configMsgChan)
+	InitConfigFactory("./config/simapp.yaml", configMsgChan, &subProvisionEndpt)
+	go sendMessage(configMsgChan, subProvisionEndpt)
 	for {
 		time.Sleep(100 * time.Second)
 	}
 }
 
-func sendMessage(msgChan chan configMessage) {
+func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt ) {
 	var devGroupHttpend string
 	var networkSliceHttpend string
+	var subscriberHttpend string
+
+	fmt.Println("Subscriber Provision Endpoint in sendMessage:")
+	fmt.Println("Address ", subProvisionEndpt.Addr)
+	fmt.Println("Port ", subProvisionEndpt.Port)
+
+
 	for {
-		ip, err := net.ResolveIPAddr("ip", "webui")
+		ip, err := net.ResolveIPAddr("ip", subProvisionEndpt.Addr)
 		if err != nil {
 			fmt.Println("failed to resolve name")
 			time.Sleep(10 * time.Second)
@@ -247,6 +324,8 @@ func sendMessage(msgChan chan configMessage) {
 		fmt.Println("device trigger  http endpoint ", devGroupHttpend)
 		networkSliceHttpend = "http://" + ip.String() + ":9089/config/v1/network-slice/"
 		fmt.Println("network slice http endpoint ", devGroupHttpend)
+		subscriberHttpend = "http://" + ip.String() + ":" + subProvisionEndpt.Port + "/api/subscriber/imsi-"
+		fmt.Println("subscriber http endpoint ", subscriberHttpend)
 		break
 	}
 	for {
@@ -259,6 +338,8 @@ func sendMessage(msgChan chan configMessage) {
 				httpend = devGroupHttpend + msg.name
 			case network_slice:
 				httpend = networkSliceHttpend + msg.name
+			case subscriber:
+				httpend = subscriberHttpend + msg.name
 			}
 
 			for {
@@ -278,7 +359,7 @@ func sendMessage(msgChan chan configMessage) {
 					time.Sleep(1 * time.Second)
 					continue
 				}
-				fmt.Printf("Message Post %v Success\n", devGroupHttpend)
+				fmt.Printf("Message Post %v Success\n", httpend)
 				break
 			}
 		}
