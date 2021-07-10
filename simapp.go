@@ -34,7 +34,7 @@ type Configuration struct {
 	DevGroup     []*DevGroup     `yaml:"device-groups,omitempty"`
 	NetworkSlice []*NetworkSlice `yaml:"network-slices,omitempty"`
 	Subscriber []*Subscriber `yaml:"subscribers,omitempty"`
-	SubProvisionEndpt *SubProvisionEndpt `yaml:"sub_provision_endpt,omitempty"`
+	SubProvisionEndpt *SubProvisionEndpt `yaml:"sub-provision-endpt,omitempty"`
 }
 
 type DevGroup struct {
@@ -53,7 +53,7 @@ type IpDomain struct {
 }
 
 type Subscriber struct {
-	UeId            string   `yaml:"ueId,omitempty" json:"ueId,omitempty"`
+	UeId            string
 	UeIdStart       string   `yaml:"ueId-start,omitempty" json:"ueId-start,omitempty"`
 	UeIdEnd         string   `yaml:"ueId-end,omitempty" json:"ueId-end,omitempty"`
 	PlmnId          string   `yaml:"plmnId,omitempty" json:"plmnId,omitempty"`
