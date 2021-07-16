@@ -553,6 +553,15 @@ func UpdateConfig(f string) error {
 			if group.visited == false {
 				fmt.Println("Group deleted ", group.Name)
 				dispatchGroup(configMsgChan, group, delete_op)
+				// find all slices which are using this device group and mark them modified
+				for _, slice := range SimappConfig.Configuration.NetworkSlice {
+					for _, dg := range slice.DevGroups {
+						if group.Name == dg {
+							slice.modified = true
+							break
+						}
+					}
+				}
 			}
 		}
 
