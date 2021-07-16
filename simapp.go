@@ -166,49 +166,7 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 		return nil
 	}
 
-	fmt.Println("Number of subscriber ranges", len(SimappConfig.Configuration.Subscriber))
-	for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
-		subscribers := SimappConfig.Configuration.Subscriber[o]
-		fmt.Println("Subscribers:")
-		fmt.Println("    UeIdStart", subscribers.UeIdStart)
-		fmt.Println("    UeIdEnd", subscribers.UeIdEnd)
-		fmt.Println("    PlmnId", subscribers.PlmnId)
-		fmt.Println("    OPc", subscribers.OPc)
-		fmt.Println("    Key", subscribers.Key)
-		fmt.Println("    SequenceNumber", subscribers.SequenceNumber)
-
-		start, err := strconv.ParseUint(subscribers.UeIdStart, 0, 64)
-		if err != nil {
-			fmt.Println("error in ParseUint with UeIdStart", err)
-			continue
-		}
-		end, err := strconv.ParseUint(subscribers.UeIdEnd, 0, 64)
-		if err != nil {
-			fmt.Println("error in ParseUint with UeIdEnd", err)
-			continue
-		}
-		for i := start; i <= end; i++ {
-			subscribers.UeId = strconv.FormatUint(i, 10)
-			fmt.Println("    UeId", subscribers.UeId)
-			if err != nil {
-				fmt.Println("error in FormatUint with UeId", err)
-				continue
-			}
-			subscribers.UeIdStart = ""
-			subscribers.UeIdEnd = ""
-			b, err := json.Marshal(subscribers)
-			if err != nil {
-				fmt.Println("error in marshal with subscribers", err)
-				continue
-			}
-			reqMsgBody := bytes.NewBuffer(b)
-			var msg configMessage
-			msg.msgPtr = reqMsgBody
-			msg.msgType = subscriber
-			msg.name = subscribers.UeId
-			configMsgChan <- msg
-		}
-	}
+	dispatchAllSubscribers(configMsgChan)
 
 	fmt.Println("Subscriber Provision Endpoint:")
 	fmt.Println("Address ", SimappConfig.Configuration.SubProvisionEndpt.Addr)
@@ -231,7 +189,7 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 }
 
 func main() {
-	configMsgChan = make(chan configMessage, 10)
+	configMsgChan = make(chan configMessage, 100)
 	var subProvisionEndpt SubProvisionEndpt
 
 	fmt.Println("SimApp started")
@@ -339,6 +297,27 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 			break
 		}
 	}
+}
+
+func compareSubscriber(subscriberNew *Subscriber, subscriberOld *Subscriber) bool {
+
+	if subscriberNew.PlmnId != subscriberOld.PlmnId {
+		fmt.Println("Plmn ID changed.")
+		return true
+	}
+	if subscriberNew.OPc != subscriberOld.OPc {
+		fmt.Println("OPc changed.")
+		return true
+	}
+	if subscriberNew.Key != subscriberOld.Key {
+		fmt.Println("Key changed.")
+		return true
+	}
+	if subscriberNew.SequenceNumber != subscriberOld.SequenceNumber {
+		fmt.Println("SequenceNumber changed.")
+		return true
+	}
+	return false
 }
 
 func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
@@ -513,6 +492,118 @@ func UpdateConfig(f string) error {
 			fmt.Println("Configuration Parsing Failed ", NewSimappConfig.Configuration)
 			return nil
 		}
+
+		fmt.Println("Number of subscriber ranges in updated config", len(SimappConfig.Configuration.Subscriber))
+		var newImsiList [] uint64
+		for o := 0; o < len(NewSimappConfig.Configuration.Subscriber); o++ {
+			newSubscribers := NewSimappConfig.Configuration.Subscriber[o]
+			fmt.Println("Subscribers:")
+			fmt.Println("    UeIdStart", newSubscribers.UeIdStart)
+			fmt.Println("    UeIdEnd", newSubscribers.UeIdEnd)
+			fmt.Println("    PlmnId", newSubscribers.PlmnId)
+			fmt.Println("    OPc", newSubscribers.OPc)
+			fmt.Println("    Key", newSubscribers.Key)
+			fmt.Println("    SequenceNumber", newSubscribers.SequenceNumber)
+
+			newStart, err := strconv.ParseUint(newSubscribers.UeIdStart, 0, 64)
+			if err != nil {
+				fmt.Println("error in ParseUint with UeIdStart", err)
+				continue
+			}
+			newEnd, err := strconv.ParseUint(newSubscribers.UeIdEnd, 0, 64)
+			if err != nil {
+				fmt.Println("error in ParseUint with UeIdEnd", err)
+				continue
+			}
+			for i := newStart; i <= newEnd; i++ {
+				found := false
+				newImsiList = append(newImsiList, i)
+				for s := 0; s < len(SimappConfig.Configuration.Subscriber); s++ {
+					subscribers := SimappConfig.Configuration.Subscriber[s]
+					start, err := strconv.ParseUint(subscribers.UeIdStart, 0, 64)
+					if err != nil {
+						fmt.Println("error in ParseUint with UeIdStart", err)
+						continue
+					}
+					end, err := strconv.ParseUint(subscribers.UeIdEnd, 0, 64)
+					if err != nil {
+						fmt.Println("error in ParseUint with UeIdEnd", err)
+						continue
+					}
+					for j := start; j <= end; j++ {
+						if i == j { // two subcribers' imsi are same
+							found = true
+							if compareSubscriber(newSubscribers, subscribers) == true {
+								fmt.Println("WARNING: subscriber provision not support modify yet!")
+							}
+							break
+						}
+					}
+				}
+				if found == true {
+					continue
+				}
+				// add subscriber to chan
+				newSubscribers.UeId = strconv.FormatUint(i, 10)
+				if err != nil {
+					fmt.Println("error in FormatUint with UeId", err)
+					continue
+				}
+
+				b, err := json.Marshal(newSubscribers)
+				if err != nil {
+					fmt.Println("error in marshal with newSubscriber", err)
+					continue
+				}
+				reqMsgBody := bytes.NewBuffer(b)
+				var msg configMessage
+				msg.msgPtr = reqMsgBody
+				msg.msgType = subscriber
+				msg.name = newSubscribers.UeId
+				msg.msgOp = add_op
+				configMsgChan <- msg
+			}
+		}
+		//delete all the exsiting subscribers not show up in new config.
+		for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
+			subscribers := SimappConfig.Configuration.Subscriber[o]
+			start, err := strconv.ParseUint(subscribers.UeIdStart, 0, 64)
+			if err != nil {
+				fmt.Println("error in ParseUint with UeIdStart", err)
+				continue
+			}
+			end, err := strconv.ParseUint(subscribers.UeIdEnd, 0, 64)
+			if err != nil {
+				fmt.Println("error in ParseUint with UeIdEnd", err)
+				continue
+			}
+			for k := start; k <= end; k++ {
+				has := false
+				for _, v := range newImsiList {
+				    if v == k {
+				        has = true
+				    }
+				}
+				if has == false {
+					fmt.Println("going to delete subscriber: ", k)
+					b, err := json.Marshal("")
+					if err != nil {
+						fmt.Println("error in marshal with subscriber", err)
+						continue
+					}
+					reqMsgBody := bytes.NewBuffer(b)
+					var msg configMessage
+					msg.msgPtr = reqMsgBody
+					msg.msgType = subscriber
+					msg.name = strconv.FormatUint(k, 10)
+					msg.msgOp = delete_op
+					configMsgChan <- msg
+				}
+			}
+		}
+		SimappConfig.Configuration.Subscriber = NewSimappConfig.Configuration.Subscriber
+		//end process subscriber update
+
 		for _, group := range SimappConfig.Configuration.DevGroup {
 			group.visited = false
 		}
@@ -624,6 +715,53 @@ func WatchConfig() {
 	fmt.Println("WatchConfig done")
 }
 
+func dispatchAllSubscribers(configMsgChan chan configMessage) {
+	fmt.Println("Number of subscriber ranges", len(SimappConfig.Configuration.Subscriber))
+	for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
+		subscribers := SimappConfig.Configuration.Subscriber[o]
+		fmt.Println("Subscribers:")
+		fmt.Println("    UeIdStart", subscribers.UeIdStart)
+		fmt.Println("    UeIdEnd", subscribers.UeIdEnd)
+		fmt.Println("    PlmnId", subscribers.PlmnId)
+		fmt.Println("    OPc", subscribers.OPc)
+		fmt.Println("    Key", subscribers.Key)
+		fmt.Println("    SequenceNumber", subscribers.SequenceNumber)
+
+		start, err := strconv.ParseUint(subscribers.UeIdStart, 0, 64)
+		if err != nil {
+			fmt.Println("error in ParseUint with UeIdStart", err)
+			continue
+		}
+		end, err := strconv.ParseUint(subscribers.UeIdEnd, 0, 64)
+		if err != nil {
+			fmt.Println("error in ParseUint with UeIdEnd", err)
+			continue
+		}
+		for i := start; i <= end; i++ {
+			subscribers.UeId = strconv.FormatUint(i, 10)
+			fmt.Println("    UeId", subscribers.UeId)
+			if err != nil {
+				fmt.Println("error in FormatUint with UeId", err)
+				continue
+			}
+//			subscribers.UeIdStart = ""
+//			subscribers.UeIdEnd = ""
+			b, err := json.Marshal(subscribers)
+			if err != nil {
+				fmt.Println("error in marshal with subscribers", err)
+				continue
+			}
+			reqMsgBody := bytes.NewBuffer(b)
+			var msg configMessage
+			msg.msgPtr = reqMsgBody
+			msg.msgType = subscriber
+			msg.name = subscribers.UeId
+			msg.msgOp = add_op
+			configMsgChan <- msg
+		}
+	}
+}
+
 func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int) {
 	fmt.Println("Group Name ", group.Name)
 	fmt.Println("  Site Name ", group.SiteInfo)
@@ -724,3 +862,4 @@ func dispatchAllNetworkSlices(configMsgChan chan configMessage) {
 		dispatchNetworkSlice(configMsgChan, slice, add_op)
 	}
 }
+
