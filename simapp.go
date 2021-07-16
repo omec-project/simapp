@@ -180,7 +180,7 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 
 	viper.SetConfigName("simapp.yaml")
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("/users/pingping/simapp-pingping/config")
+	viper.AddConfigPath("/simapp/config")
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {             // Handle errors reading the config file
 		return err
