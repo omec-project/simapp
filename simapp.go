@@ -188,14 +188,22 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 	return nil
 }
 
+func syncConfig(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(w, "OK\n")
+	dispatchAllGroups(configMsgChan)
+	dispatchAllNetworkSlices(configMsgChan)
+}
+
 func main() {
+	fmt.Println("SimApp started")
 	configMsgChan = make(chan configMessage, 100)
 	var subProvisionEndpt SubProvisionEndpt
 
-	fmt.Println("SimApp started")
 	InitConfigFactory("./config/simapp.yaml", configMsgChan, &subProvisionEndpt)
 	go sendMessage(configMsgChan, subProvisionEndpt)
 	go WatchConfig()
+	http.HandleFunc("/synchronize", syncConfig)
+	http.ListenAndServe(":8080", nil)
 	for {
 		time.Sleep(100 * time.Second)
 	}
@@ -494,7 +502,7 @@ func UpdateConfig(f string) error {
 		}
 
 		fmt.Println("Number of subscriber ranges in updated config", len(SimappConfig.Configuration.Subscriber))
-		var newImsiList [] uint64
+		var newImsiList []uint64
 		for o := 0; o < len(NewSimappConfig.Configuration.Subscriber); o++ {
 			newSubscribers := NewSimappConfig.Configuration.Subscriber[o]
 			fmt.Println("Subscribers:")
@@ -580,9 +588,9 @@ func UpdateConfig(f string) error {
 			for k := start; k <= end; k++ {
 				has := false
 				for _, v := range newImsiList {
-				    if v == k {
-				        has = true
-				    }
+					if v == k {
+						has = true
+					}
 				}
 				if has == false {
 					fmt.Println("going to delete subscriber: ", k)
@@ -744,8 +752,8 @@ func dispatchAllSubscribers(configMsgChan chan configMessage) {
 				fmt.Println("error in FormatUint with UeId", err)
 				continue
 			}
-//			subscribers.UeIdStart = ""
-//			subscribers.UeIdEnd = ""
+			//			subscribers.UeIdStart = ""
+			//			subscribers.UeIdEnd = ""
 			b, err := json.Marshal(subscribers)
 			if err != nil {
 				fmt.Println("error in marshal with subscribers", err)
@@ -862,4 +870,3 @@ func dispatchAllNetworkSlices(configMsgChan chan configMessage) {
 		dispatchNetworkSlice(configMsgChan, slice, add_op)
 	}
 }
-
