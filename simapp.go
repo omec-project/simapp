@@ -63,6 +63,7 @@ type Subscriber struct {
 	UeIdEnd        string `yaml:"ueId-end,omitempty" json:"ueId-end,omitempty"`
 	PlmnId         string `yaml:"plmnId,omitempty" json:"plmnId,omitempty"`
 	OPc            string `yaml:"opc,omitempty" json:"opc,omitempty"`
+	OP             string `yaml:"op,omitempty" json:"op,omitempty"`
 	Key            string `yaml:"key,omitempty" json:"key,omitempty"`
 	SequenceNumber string `yaml:"sequenceNumber,omitempty" json:"sequenceNumber,omitempty"`
 }
@@ -317,6 +318,10 @@ func compareSubscriber(subscriberNew *Subscriber, subscriberOld *Subscriber) boo
 		fmt.Println("OPc changed.")
 		return true
 	}
+	if subscriberNew.OP != subscriberOld.OP {
+		fmt.Println("OP changed.")
+		return true
+	}
 	if subscriberNew.Key != subscriberOld.Key {
 		fmt.Println("Key changed.")
 		return true
@@ -510,6 +515,7 @@ func UpdateConfig(f string) error {
 			fmt.Println("    UeIdEnd", newSubscribers.UeIdEnd)
 			fmt.Println("    PlmnId", newSubscribers.PlmnId)
 			fmt.Println("    OPc", newSubscribers.OPc)
+			fmt.Println("    OP", newSubscribers.OP)
 			fmt.Println("    Key", newSubscribers.Key)
 			fmt.Println("    SequenceNumber", newSubscribers.SequenceNumber)
 
@@ -732,6 +738,7 @@ func dispatchAllSubscribers(configMsgChan chan configMessage) {
 		fmt.Println("    UeIdEnd", subscribers.UeIdEnd)
 		fmt.Println("    PlmnId", subscribers.PlmnId)
 		fmt.Println("    OPc", subscribers.OPc)
+		fmt.Println("    OP", subscribers.OP)
 		fmt.Println("    Key", subscribers.Key)
 		fmt.Println("    SequenceNumber", subscribers.SequenceNumber)
 
