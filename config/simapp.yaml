@@ -24,8 +24,9 @@ configuration:
     opc: 22222222222222222222222222222222
     key: 22222222222222222222222222222222
     sequenceNumber: 222222222
+  provision-network-slice: false
   sub-provision-endpt:
-    addr: webui
+    addr: webui #should be webui for 5G and config4g for 4G
     port: 5000
   device-groups:
   - name:  "iot-camera"
