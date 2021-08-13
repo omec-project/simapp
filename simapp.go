@@ -167,17 +167,11 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 		return nil
 	}
 
-	dispatchAllSubscribers(configMsgChan)
-
 	fmt.Println("Subscriber Provision Endpoint:")
 	fmt.Println("Address ", SimappConfig.Configuration.SubProvisionEndpt.Addr)
 	fmt.Println("Port ", SimappConfig.Configuration.SubProvisionEndpt.Port)
 	subProvisionEndpt.Addr = SimappConfig.Configuration.SubProvisionEndpt.Addr
 	subProvisionEndpt.Port = SimappConfig.Configuration.SubProvisionEndpt.Port
-
-	dispatchAllGroups(configMsgChan)
-
-	dispatchAllNetworkSlices(configMsgChan)
 
 	viper.SetConfigName("simapp.yaml")
 	viper.SetConfigType("yaml")
@@ -201,8 +195,14 @@ func main() {
 	var subProvisionEndpt SubProvisionEndpt
 
 	InitConfigFactory("./config/simapp.yaml", configMsgChan, &subProvisionEndpt)
+
 	go sendMessage(configMsgChan, subProvisionEndpt)
 	go WatchConfig()
+
+	dispatchAllSubscribers(configMsgChan)
+	dispatchAllGroups(configMsgChan)
+	dispatchAllNetworkSlices(configMsgChan)
+
 	http.HandleFunc("/synchronize", syncConfig)
 	http.ListenAndServe(":8080", nil)
 	for {
