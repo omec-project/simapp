@@ -11,15 +11,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/free5gc/logger_util"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 type Config struct {
@@ -219,22 +220,15 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 	fmt.Println("Address ", subProvisionEndpt.Addr)
 	fmt.Println("Port ", subProvisionEndpt.Port)
 
-	for {
-		ip, err := net.ResolveIPAddr("ip", subProvisionEndpt.Addr)
-		if err != nil {
-			fmt.Println("failed to resolve name")
-			time.Sleep(10 * time.Second)
-			continue
-		}
-		fmt.Println("webui running at ", ip.String())
-		devGroupHttpend = "http://" + ip.String() + ":9089/config/v1/device-group/"
-		fmt.Println("device trigger  http endpoint ", devGroupHttpend)
-		networkSliceHttpend = "http://" + ip.String() + ":9089/config/v1/network-slice/"
-		fmt.Println("network slice http endpoint ", devGroupHttpend)
-		subscriberHttpend = "http://" + ip.String() + ":" + subProvisionEndpt.Port + "/api/subscriber/imsi-"
-		fmt.Println("subscriber http endpoint ", subscriberHttpend)
-		break
-	}
+	ip := strings.TrimSpace(subProvisionEndpt.Addr)
+	fmt.Println("webui running at ", ip)
+	devGroupHttpend = "http://" + ip + ":" + subProvisionEndpt.Port + "/config/v1/device-group/"
+	fmt.Println("device trigger  http endpoint ", devGroupHttpend)
+	networkSliceHttpend = "http://" + ip + ":" + subProvisionEndpt.Port + "/config/v1/network-slice/"
+	fmt.Println("network slice http endpoint ", devGroupHttpend)
+	subscriberHttpend = "http://" + ip + ":" + subProvisionEndpt.Port + "/api/subscriber/imsi-"
+	fmt.Println("subscriber http endpoint ", subscriberHttpend)
+
 	for msg := range msgChan {
 		var httpend string
 		fmt.Println("Received Message from Channel")
