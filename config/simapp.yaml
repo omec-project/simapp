@@ -60,6 +60,12 @@ configuration:
     permit-applications:
     - iot-app1-permit
     - iot-app2-permit
+    application-filtering-rules:
+        #list of all rules as per priority
+      - rule-name: rule1
+        priority: 10
+        action: "permit"
+        endpoint: "0.0.0.0/0"
     qos:
       downlink: 20000000
       traffic-class: platinum

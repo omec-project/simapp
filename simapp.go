@@ -75,16 +75,17 @@ type SubProvisionEndpt struct {
 }
 
 type NetworkSlice struct {
-	Name       string     `yaml:"name,omitempty" json:"name,omitempty"`
-	SliceId    *SliceId   `yaml:"slice-id,omitempty" json:"slice-id,omitempty"`
-	Qos        *QosInfo   `yaml:"qos,omitempty" json:"qos,omitempty"`
-	DevGroups  []string   `yaml:"site-device-group,omitempty" json:"site-device-group,omitempty"`
-	SiteInfo   *SiteInfo  `yaml:"site-info,omitempty" json:"site-info,omitempty"`
-	DenyApps   []string   `yaml:"deny-applications,omitempty" json:"deny-applications,omitempty"`
-	PermitApps []string   `yaml:"permit-applications,omitempty" json:"permit-applications,omitempty"`
-	AppInfo    []*AppInfo `yaml:"applications-information,omitempty" json:"applications-information,omitempty"`
-	visited    bool
-	modified   bool
+	Name                      string                       `yaml:"name,omitempty" json:"name,omitempty"`
+	SliceId                   *SliceId                     `yaml:"slice-id,omitempty" json:"slice-id,omitempty"`
+	Qos                       *QosInfo                     `yaml:"qos,omitempty" json:"qos,omitempty"`
+	DevGroups                 []string                     `yaml:"site-device-group,omitempty" json:"site-device-group,omitempty"`
+	SiteInfo                  *SiteInfo                    `yaml:"site-info,omitempty" json:"site-info,omitempty"`
+	ApplicationFilteringRules []*ApplicationFilteringRules `yaml:"application-filtering-rules,omitempty" json:"application-filtering-rules,omitempty"`
+	DenyApps                  []string                     `yaml:"deny-applications,omitempty" json:"deny-applications,omitempty"`
+	PermitApps                []string                     `yaml:"permit-applications,omitempty" json:"permit-applications,omitempty"`
+	AppInfo                   []*AppInfo                   `yaml:"applications-information,omitempty" json:"applications-information,omitempty"`
+	visited                   bool
+	modified                  bool
 }
 
 type SliceId struct {
@@ -126,6 +127,27 @@ type AppInfo struct {
 	EndPoint  string `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
 	Protocol  int    `yaml:"protocol,omitempty" json:"protocol,omitempty"`
 	StartPort int    `yaml:"start-port,omitempty" json:"start-port,omitempty"`
+}
+
+type ApplicationFilteringRules struct {
+	// Rule name
+	RuleName string `yaml:"rule-name,omitempty" json:"rule-name,omitempty"`
+	//priority
+	Priority int32 `yaml:"priority,omitempty" json:"priority,omitempty"`
+	//action
+	Action string `yaml:"action,omitempty" json:"action,omitempty"`
+	// Application Desination IP or network
+	Endpoint string `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
+	//protocol
+	Protocol int32 `yaml:"protocol,omitempty" json:"protocol,omitempty"`
+	// port range start
+	StartPort int32 `yaml:"start-port,omitempty" json:"start-port,omitempty"`
+	// port range end
+	EndPort int32 `yaml:"end-port,omitempty" json:"end-port,omitempty"`
+
+	AppMbrUplink int32 `yaml:"app-mbr-uplink,omitempty" json:"app-mbr-uplink,omitempty"`
+
+	AppMbrDownlink int32 `yaml:"app-mbr-downlink,omitempty" json:"app-mbr-downlink,omitempty"`
 }
 
 const (
