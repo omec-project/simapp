@@ -431,6 +431,19 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 			return true // 2 network slices have some difference
 		}
 	}
+	for _, ng := range sliceOld.DevGroups {
+		found := false
+		for _, og := range sliceNew.DevGroups {
+			if ng == og {
+				found = true
+				break
+			}
+		}
+		if found == false {
+			fmt.Println("Dev Group Deleted in slice ")
+			return true // 2 network slices have some difference
+		}
+	}
 	oldSite := sliceOld.SiteInfo
 	newSite := sliceNew.SiteInfo
 	if oldSite.SiteName != newSite.SiteName {
