@@ -52,10 +52,11 @@ type DevGroup struct {
 }
 
 type IpDomain struct {
-	Dnn        string `yaml:"dnn,omitempty" json:"dnn,omitempty"`
-	DnsPrimary string `yaml:"dns-primary,omitempty" json:"dns-primary,omitempty"`
-	Mtu        int    `yaml:"mtu,omitempty" json:"mtu,omitempty"`
-	UePool     string `yaml:"ue-ip-pool,omitempty" json:"ue-ip-pool,omitempty"`
+	Dnn        string          `yaml:"dnn,omitempty" json:"dnn,omitempty"`
+	DnsPrimary string          `yaml:"dns-primary,omitempty" json:"dns-primary,omitempty"`
+	Mtu        int             `yaml:"mtu,omitempty" json:"mtu,omitempty"`
+	UePool     string          `yaml:"ue-ip-pool,omitempty" json:"ue-ip-pool,omitempty"`
+	ApnQos     *ApnAmbrQosInfo `yaml:"dnn-qos,omitempty" json:"dnn-qos,omitempty"`
 }
 
 type Subscriber struct {
@@ -78,12 +79,10 @@ type NetworkSlice struct {
 	Name                      string                       `yaml:"name,omitempty" json:"name,omitempty"`
 	SliceId                   *SliceId                     `yaml:"slice-id,omitempty" json:"slice-id,omitempty"`
 	Qos                       *QosInfo                     `yaml:"qos,omitempty" json:"qos,omitempty"`
+	ApnQos                    *ApnAmbrQosInfo              `yaml:"apn-ambr-qos,omitempty" json:"apn-ambr-qos,omitempty"`
 	DevGroups                 []string                     `yaml:"site-device-group,omitempty" json:"site-device-group,omitempty"`
 	SiteInfo                  *SiteInfo                    `yaml:"site-info,omitempty" json:"site-info,omitempty"`
 	ApplicationFilteringRules []*ApplicationFilteringRules `yaml:"application-filtering-rules,omitempty" json:"application-filtering-rules,omitempty"`
-	DenyApps                  []string                     `yaml:"deny-applications,omitempty" json:"deny-applications,omitempty"`
-	PermitApps                []string                     `yaml:"permit-applications,omitempty" json:"permit-applications,omitempty"`
-	AppInfo                   []*AppInfo                   `yaml:"applications-information,omitempty" json:"applications-information,omitempty"`
 	visited                   bool
 	modified                  bool
 }
@@ -96,6 +95,12 @@ type SliceId struct {
 type QosInfo struct {
 	Uplink       int    `yaml:"uplink,omitempty" json:"uplink,omitempty"`
 	Downlink     int    `yaml:"downlink,omitempty" json:"downlink,omitempty"`
+	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
+}
+
+type ApnAmbrQosInfo struct {
+	Uplink       int    `yaml:"uplink-mbr,omitempty" json:"uplink-mbr,omitempty"`
+	Downlink     int    `yaml:"downlink-mbr,omitempty" json:"downlink-mbr,omitempty"`
 	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 }
 
@@ -148,6 +153,10 @@ type ApplicationFilteringRules struct {
 	AppMbrUplink int32 `yaml:"app-mbr-uplink,omitempty" json:"app-mbr-uplink,omitempty"`
 
 	AppMbrDownlink int32 `yaml:"app-mbr-downlink,omitempty" json:"app-mbr-downlink,omitempty"`
+
+	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
+
+	RuleTrigger string `yaml:"rule-trigger,omitempty" json:"rule-trigger,omitempty"`
 }
 
 const (
@@ -471,52 +480,6 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 		}
 	}
 
-	for _, newdenyApps := range sliceNew.DenyApps {
-		found := false
-		for _, olddenyApps := range sliceOld.DenyApps {
-			fmt.Printf("Compare old %v and new DenyApp %v\n", olddenyApps, newdenyApps)
-			if olddenyApps == newdenyApps {
-				found = true
-				break
-			}
-		}
-		if found == false {
-			fmt.Println("deny apps changed in slice ")
-			return true
-		}
-	}
-	for _, newpermitApps := range sliceNew.PermitApps {
-		found := false
-		for _, oldpermitApps := range sliceOld.PermitApps {
-			fmt.Printf("Compare old %v and new permiApp %v\n", oldpermitApps, newpermitApps)
-			if oldpermitApps == newpermitApps {
-				found = true
-				break
-			}
-		}
-		if found == false {
-			fmt.Println("permit apps changed in slice ")
-			return true
-		}
-	}
-
-	for _, oldApp := range sliceOld.AppInfo {
-		for _, newApp := range sliceNew.AppInfo {
-			found := false
-			if (oldApp.AppName == newApp.AppName) &&
-				(oldApp.StartPort == newApp.StartPort) &&
-				(oldApp.EndPort == newApp.EndPort) &&
-				(oldApp.Protocol == newApp.Protocol) &&
-				(oldApp.EndPoint == newApp.EndPoint) {
-				found = true
-				break
-			}
-			if found == false {
-				fmt.Println("Appinfo changed in slice ")
-				return true // differnt Apps
-			}
-		}
-	}
 	fmt.Println("No change in slices ")
 	return false
 }
@@ -864,20 +827,6 @@ func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice,
 	fmt.Println("  Slice Device Groups ", slice.DevGroups)
 	for im := 0; im < len(slice.DevGroups); im++ {
 		fmt.Println("  Attached Device Groups  ", slice.DevGroups[im])
-	}
-
-	fmt.Println("  Permit Apps ", slice.PermitApps)
-	for im := 0; im < len(slice.PermitApps); im++ {
-		fmt.Println("  Permit Apps  ", slice.PermitApps[im])
-	}
-
-	fmt.Println("  Deny Apps ", slice.DenyApps)
-	for im := 0; im < len(slice.DenyApps); im++ {
-		fmt.Println("  Deny Apps  ", slice.DenyApps[im])
-	}
-	fmt.Println("  Application information ", slice.AppInfo)
-	for im := 0; im < len(slice.AppInfo); im++ {
-		fmt.Println("    Application Information ", slice.AppInfo[im])
 	}
 
 	b, err := json.Marshal(slice)

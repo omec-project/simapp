@@ -41,6 +41,10 @@ configuration:
       dns-primary: 8.8.8.8
       mtu: 1460
       ue-ip-pool: 10.91.0.0/16
+      dnn-qos:
+        downlink-mbr: 20000000
+        uplink-mbr: 4000000
+        traffic-class: "platinum"  #default bearer QCI/ARP 
     site-info: "menlo"
   network-slices:
   - name: "slice1"
@@ -49,30 +53,53 @@ configuration:
       sst: 255
     site-device-group: 
     - "iot-camera"
-    applications-information:
-    - app-name: iot-app
-      end-port: 40000
-      endpoint: 1.1.1.1/32
-      protocol: 17
-      start-port: 40000
-    deny-applications:
-    - iot-app-deny
-    permit-applications:
-    - iot-app1-permit
-    - iot-app2-permit
     application-filtering-rules:
-        #list of all rules as per priority
-      - rule-name: rule1
-        priority: 10
-        action: "permit"
-        endpoint: "0.0.0.0/0"
+    - rule-name: rule1
+      priority: 25
+      action: "permit"
+      endpoint: 0.0.0.0/0
+      app-mbr-uplink:   100000  #100kbps
+      app-mbr-downlink: 2000000 #2Mbps
+      traffic-class : "silver" #if same as APN-AMBR then its default bearer rule
+    - rule-name: rule2
+      priority: 15
+      action: "permit"
+      endpoint: 8.8.8.8/32
+      app-mbr-uplink: 1000000   #1Mbps
+      app-mbr-downlink: 4000000 #5Mbps
+      traffic-class : "silver" #if same as APN-AMBR then its default bearer rule
+    - rule-name: rule3
+      priority: 25
+      action: "permit"
+      endpoint: 8.8.8.4/32
+      app-mbr-uplink: 120000
+      app-mbr-downlink: 520000
+      traffic-class : "platinum" #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+      rule-trigger: api  #dont create this bearer immediately. Wait for API call 
+    - rule-name: rule4
+      priority: 35
+      action: "permit"
+      endpoint: 1.1.1.1/32
+      app-mbr-uplink: 120000
+      app-mbr-downlink: 520000
+      traffic-class : "gold" #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+      rule-trigger: "timer,10"  #dont create this bearer immediately. Create after 10 sec time.
+    - rule-name: rule5
+      priority: 45
+      action: "permit"
+      endpoint: 1.1.1.2/32
+      app-mbr-uplink: 120000
+      app-mbr-downlink: 520000
+      traffic-class : "diamond" #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+      rule-trigger: "timer,0"  #immeidate creation of this bearer immediately. Create after 10 sec time.
     qos:
-      downlink: 20000000
-      traffic-class: platinum
-      uplink: 4000000
-    site-device-group:
-    - iot-camera1
-    - iot-camera2
+      uplink: 2000000   #2Mbps
+      downlink: 5000000 #5Mbps
+      traffic-class: "silver" #default bearer QCI/ARP
+    apn-ambr-qos:
+      uplink-mbr: 2000000   #2Mbps
+      downlink-mbr: 5000000 #5Mbps
+      traffic-class: "silver" #default bearer QCI/ARP
     site-info:
       gNodeBs:
       - name: menlo-gnb1
