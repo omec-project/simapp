@@ -52,11 +52,12 @@ type DevGroup struct {
 }
 
 type IpDomain struct {
-	Dnn        string          `yaml:"dnn,omitempty" json:"dnn,omitempty"`
-	DnsPrimary string          `yaml:"dns-primary,omitempty" json:"dns-primary,omitempty"`
-	Mtu        int             `yaml:"mtu,omitempty" json:"mtu,omitempty"`
-	UePool     string          `yaml:"ue-ip-pool,omitempty" json:"ue-ip-pool,omitempty"`
-	ApnQos     *ApnAmbrQosInfo `yaml:"dnn-qos,omitempty" json:"dnn-qos,omitempty"`
+	Dnn          string        `yaml:"dnn,omitempty" json:"dnn,omitempty"`
+	DnsPrimary   string        `yaml:"dns-primary,omitempty" json:"dns-primary,omitempty"`
+	DnsSecondary string        `yaml:"dns-secondary,omitempty" json:"dns-secondary,omitempty"`
+	Mtu          int           `yaml:"mtu,omitempty" json:"mtu,omitempty"`
+	UePool       string        `yaml:"ue-ip-pool,omitempty" json:"ue-ip-pool,omitempty"`
+	UeDnnQos     *UeDnnQosInfo `yaml:"ue-dnn-qos,omitempty" json:"ue-dnn-qos,omitempty"`
 }
 
 type Subscriber struct {
@@ -95,6 +96,12 @@ type SliceId struct {
 type QosInfo struct {
 	Uplink       int    `yaml:"uplink,omitempty" json:"uplink,omitempty"`
 	Downlink     int    `yaml:"downlink,omitempty" json:"downlink,omitempty"`
+	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
+}
+
+type UeDnnQosInfo struct {
+	Uplink       int    `yaml:"dnn-mbr-uplink,omitempty" json:"dnn-mbr-uplink,omitempty"`
+	Downlink     int    `yaml:"dnn-mbr-downlink,omitempty" json:"dnn-mbr-downlink,omitempty"`
 	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 }
 
