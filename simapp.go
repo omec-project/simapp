@@ -221,6 +221,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 	fmt.Println("Port ", subProvisionEndpt.Port)
 
 	ip := strings.TrimSpace(subProvisionEndpt.Addr)
+
 	fmt.Println("webui running at ", ip)
 	devGroupHttpend = "http://" + ip + ":" + subProvisionEndpt.Port + "/config/v1/device-group/"
 	fmt.Println("device trigger  http endpoint ", devGroupHttpend)
@@ -231,7 +232,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 
 	for msg := range msgChan {
 		var httpend string
-		fmt.Println("Received Message from Channel")
+		fmt.Println("Received Message from Channel", msgChan, msg)
 		switch msg.msgType {
 		case device_group:
 			httpend = devGroupHttpend + msg.name
@@ -244,7 +245,12 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 		for {
 			if msg.msgOp == add_op {
 				fmt.Println("Post Message to ", httpend)
-				resp, err := http.Post(httpend, "application/json", msg.msgPtr)
+				client := &http.Client{Timeout: 5 * time.Second}
+				req, err := http.NewRequest(http.MethodPost, httpend, msg.msgPtr)
+				//resp, err := http.Post(httpend, "application/json", msg.msgPtr)
+				req.Header.Set("Content-Type", "application/json; charset=utf-8")
+				resp, err := client.Do(req)
+				fmt.Println("Post Message returned ", httpend)
 				//Handle Error
 				if err != nil {
 					fmt.Printf("An Error Occured %v", err)
@@ -263,7 +269,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 			} else if msg.msgOp == modify_op {
 				fmt.Println("PUT Message to ", httpend)
 				// initialize http client
-				client := &http.Client{}
+				client := &http.Client{Timeout: 5 * time.Second}
 				req, err := http.NewRequest(http.MethodPut, httpend, msg.msgPtr)
 				//Handle Error
 				if err != nil {
@@ -281,7 +287,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 			} else if msg.msgOp == delete_op {
 				fmt.Println("DELETE Message to ", httpend)
 				// initialize http client
-				client := &http.Client{}
+				client := &http.Client{Timeout: 5 * time.Second}
 				req, err := http.NewRequest(http.MethodDelete, httpend, msg.msgPtr)
 				//Handle Error
 				if err != nil {
