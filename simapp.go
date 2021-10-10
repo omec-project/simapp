@@ -80,7 +80,6 @@ type NetworkSlice struct {
 	Name                      string                       `yaml:"name,omitempty" json:"name,omitempty"`
 	SliceId                   *SliceId                     `yaml:"slice-id,omitempty" json:"slice-id,omitempty"`
 	Qos                       *QosInfo                     `yaml:"qos,omitempty" json:"qos,omitempty"`
-	ApnQos                    *ApnAmbrQosInfo              `yaml:"apn-ambr-qos,omitempty" json:"apn-ambr-qos,omitempty"`
 	DevGroups                 []string                     `yaml:"site-device-group,omitempty" json:"site-device-group,omitempty"`
 	SiteInfo                  *SiteInfo                    `yaml:"site-info,omitempty" json:"site-info,omitempty"`
 	ApplicationFilteringRules []*ApplicationFilteringRules `yaml:"application-filtering-rules,omitempty" json:"application-filtering-rules,omitempty"`
@@ -100,15 +99,17 @@ type QosInfo struct {
 }
 
 type UeDnnQosInfo struct {
-	Uplink       int    `yaml:"dnn-mbr-uplink,omitempty" json:"dnn-mbr-uplink,omitempty"`
-	Downlink     int    `yaml:"dnn-mbr-downlink,omitempty" json:"dnn-mbr-downlink,omitempty"`
-	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
+	Uplink       int               `yaml:"dnn-mbr-uplink,omitempty" json:"dnn-mbr-uplink,omitempty"`
+	Downlink     int               `yaml:"dnn-mbr-downlink,omitempty" json:"dnn-mbr-downlink,omitempty"`
+	TrafficClass *TrafficClassInfo `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 }
 
-type ApnAmbrQosInfo struct {
-	Uplink       int    `yaml:"uplink-mbr,omitempty" json:"uplink-mbr,omitempty"`
-	Downlink     int    `yaml:"downlink-mbr,omitempty" json:"downlink-mbr,omitempty"`
-	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
+type TrafficClassInfo struct {
+	Name string `yaml:"name,omitempty" json:"name,omitempty"`
+	Qci  int    `yaml:"qci,omitempty" json:"qci,omitempty"`
+	Arp  int    `yaml:"arp,omitempty" json:"arp,omitempty"`
+	Pdb  int    `yaml:"pdb,omitempty" json:"pdb,omitempty"`
+	Pelr int    `yaml:"pelr,omitempty" json:"pelr,omitempty"`
 }
 
 type SiteInfo struct {
@@ -161,7 +162,7 @@ type ApplicationFilteringRules struct {
 
 	AppMbrDownlink int32 `yaml:"app-mbr-downlink,omitempty" json:"app-mbr-downlink,omitempty"`
 
-	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
+	TrafficClass *TrafficClassInfo `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 
 	RuleTrigger string `yaml:"rule-trigger,omitempty" json:"rule-trigger,omitempty"`
 }
@@ -419,6 +420,18 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 	}
 	if oldipdomain.UePool != newipdomain.UePool {
 		return true
+	}
+	if oldipdomain.UeDnnQos != nil && newipdomain.UeDnnQos != nil {
+		if oldipdomain.UeDnnQos.TrafficClass != nil &&
+			newipdomain.UeDnnQos.TrafficClass != nil {
+			if (oldipdomain.UeDnnQos.TrafficClass.Name != newipdomain.UeDnnQos.TrafficClass.Name) ||
+				(oldipdomain.UeDnnQos.TrafficClass.Qci != newipdomain.UeDnnQos.TrafficClass.Qci) ||
+				(oldipdomain.UeDnnQos.TrafficClass.Arp != newipdomain.UeDnnQos.TrafficClass.Arp) ||
+				(oldipdomain.UeDnnQos.TrafficClass.Pdb != newipdomain.UeDnnQos.TrafficClass.Pdb) ||
+				(oldipdomain.UeDnnQos.TrafficClass.Pelr != newipdomain.UeDnnQos.TrafficClass.Pelr) {
+				return true
+			}
+		}
 	}
 
 	return false

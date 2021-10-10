@@ -45,7 +45,12 @@ configuration:
       ue-dnn-qos:
         dnn-mbr-downlink: 20000000
         dnn-mbr-uplink: 4000000
-        traffic-class: "platinum"  #default bearer QCI/ARP 
+        traffic-class:  #default bearer QCI/ARP
+          name: "platinum"
+          qci: 9
+          arp: 6
+          pdb: 300
+          pelr: 6
     site-info: "menlo"
   network-slices:
   - name: "slice1"
@@ -68,14 +73,24 @@ configuration:
       endpoint: 8.8.8.8/32
       app-mbr-uplink: 1000000   #1Mbps
       app-mbr-downlink: 4000000 #5Mbps
-      traffic-class : "silver" #if same as APN-AMBR then its default bearer rule
+      traffic-class : #if same as APN-AMBR then its default bearer rule
+        name: "silver"
+        qci: 9
+        arp: 6
+        pdb: 300
+        pelr: 6
     - rule-name: rule3
       priority: 25
       action: "permit"
       endpoint: 8.8.8.4/32
       app-mbr-uplink: 120000
       app-mbr-downlink: 520000
-      traffic-class : "platinum" #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+      traffic-class : #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+        name: "platinum"
+        qci: 9
+        arp: 6
+        pdb: 300
+        pelr: 6
       rule-trigger: api  #dont create this bearer immediately. Wait for API call 
     - rule-name: rule4
       priority: 35
@@ -83,7 +98,12 @@ configuration:
       endpoint: 1.1.1.1/32
       app-mbr-uplink: 120000
       app-mbr-downlink: 520000
-      traffic-class : "gold" #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+      traffic-class : #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+        name: "gold"
+        qci: 9
+        arp: 6
+        pdb: 300
+        pelr: 6
       rule-trigger: "timer,10"  #dont create this bearer immediately. Create after 10 sec time.
     - rule-name: rule5
       priority: 45
@@ -91,15 +111,16 @@ configuration:
       endpoint: 1.1.1.2/32
       app-mbr-uplink: 120000
       app-mbr-downlink: 520000
-      traffic-class : "diamond" #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+      traffic-class : #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+        name: "diamond"
+        qci: 9
+        arp: 6
+        pdb: 300
+        pelr: 6
       rule-trigger: "timer,0"  #immeidate creation of this bearer immediately. Create after 10 sec time.
     qos:
       uplink: 2000000   #2Mbps
       downlink: 5000000 #5Mbps
-      traffic-class: "silver" #default bearer QCI/ARP
-    apn-ambr-qos:
-      uplink-mbr: 2000000   #2Mbps
-      downlink-mbr: 5000000 #5Mbps
       traffic-class: "silver" #default bearer QCI/ARP
     site-info:
       gNodeBs:
