@@ -229,24 +229,107 @@ func syncConfig(w http.ResponseWriter, req *http.Request) {
 	dispatchAllNetworkSlices(configMsgChan)
 }
 
+var subProvisionEndpt SubProvisionEndpt
+
 func main() {
 	fmt.Println("SimApp started")
 	configMsgChan = make(chan configMessage, 100)
-	var subProvisionEndpt SubProvisionEndpt
+	//var subProvisionEndpt SubProvisionEndpt
 
 	InitConfigFactory("./config/simapp.yaml", configMsgChan, &subProvisionEndpt)
 
 	go sendMessage(configMsgChan, subProvisionEndpt)
 	go WatchConfig()
 
-	dispatchAllSubscribers(configMsgChan)
-	dispatchAllGroups(configMsgChan)
-	dispatchAllNetworkSlices(configMsgChan)
+	go dispatchAllSubscribers(configMsgChan)
+	go dispatchAllGroups(configMsgChan)
+	go dispatchAllNetworkSlices(configMsgChan)
 
 	http.HandleFunc("/synchronize", syncConfig)
 	http.ListenAndServe(":8080", nil)
 	for {
 		time.Sleep(100 * time.Second)
+	}
+}
+
+//Sends Subscriber config to peer Config pod
+func sendConfigMsg(cfgMsg *configMessage) error {
+
+	httpend := makeHttpReqEndpoint(cfgMsg, subProvisionEndpt)
+
+	if httpReq, err := makeHttpReqMsg(cfgMsg, httpend); err != nil {
+		fmt.Println("make http req error: ", err.Error())
+		return err
+	} else {
+		err := sendHttpReqMsg(httpReq)
+		return err
+	}
+}
+
+func makeHttpReqEndpoint(cfgMsg *configMessage, subProvisionEndpt SubProvisionEndpt) (httpEnd string) {
+
+	ip := strings.TrimSpace(subProvisionEndpt.Addr)
+
+	switch cfgMsg.msgType {
+	case device_group:
+		devGroupHttpend := "http://" + ip + ":" + subProvisionEndpt.Port + "/config/v1/device-group/"
+		httpEnd = devGroupHttpend + cfgMsg.name
+	case network_slice:
+		networkSliceHttpend := "http://" + ip + ":" + subProvisionEndpt.Port + "/config/v1/network-slice/"
+		httpEnd = networkSliceHttpend + cfgMsg.name
+	case subscriber:
+		subscriberHttpend := "http://" + ip + ":" + subProvisionEndpt.Port + "/api/subscriber/imsi-"
+		httpEnd = subscriberHttpend + cfgMsg.name
+	default:
+		httpEnd = fmt.Errorf("invalid msg type").Error()
+	}
+
+	return
+}
+
+//Form Http req msg based on msg op type
+func makeHttpReqMsg(cfgMsg *configMessage, httpEnd string) (req *http.Request, err error) {
+
+	httpMethod := http.MethodPost
+	switch cfgMsg.msgOp {
+	case add_op:
+		httpMethod = http.MethodPost
+	case modify_op:
+		httpMethod = http.MethodPut
+	case delete_op:
+		httpMethod = http.MethodDelete
+	default:
+		return nil, fmt.Errorf("invalid msg operation [%v] ", cfgMsg.msgOp)
+	}
+
+	if req, err = http.NewRequest(httpMethod, httpEnd, cfgMsg.msgPtr); err != nil {
+		return nil, err
+	}
+
+	//set content type
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	return req, nil
+}
+
+func sendHttpReqMsg(req *http.Request) error {
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	//Keep sending request to Http server until response is success
+	for {
+		rsp, err := client.Do(req)
+
+		if err != nil {
+			fmt.Println("http req send error ", err.Error())
+			continue
+		}
+
+		if rsp.StatusCode == http.StatusAccepted ||
+			rsp.StatusCode == http.StatusOK || rsp.StatusCode == http.StatusNoContent {
+			fmt.Println("config push success")
+			return nil
+		} else {
+			fmt.Println("http rsp error ", http.StatusText(rsp.StatusCode))
+		}
 	}
 }
 
@@ -790,7 +873,7 @@ func dispatchAllSubscribers(configMsgChan chan configMessage) {
 			msg.msgType = subscriber
 			msg.name = subscribers.UeId
 			msg.msgOp = add_op
-			configMsgChan <- msg
+			go sendConfigMsg(&msg)
 		}
 	}
 }
@@ -825,8 +908,7 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int)
 	msg.msgType = device_group
 	msg.name = group.Name
 	msg.msgOp = msgOp
-	configMsgChan <- msg
-
+	go sendConfigMsg(&msg)
 }
 
 func dispatchAllGroups(configMsgChan chan configMessage) {
@@ -871,8 +953,7 @@ func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice,
 	msg.msgType = network_slice
 	msg.name = slice.Name
 	msg.msgOp = msgOp
-	configMsgChan <- msg
-
+	go sendConfigMsg(&msg)
 }
 
 func dispatchAllNetworkSlices(configMsgChan chan configMessage) {
