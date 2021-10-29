@@ -66,7 +66,7 @@ configuration:
       endpoint: 0.0.0.0/0
       app-mbr-uplink:   100000  #100kbps
       app-mbr-downlink: 2000000 #2Mbps
-      traffic-class : "silver" #if same as APN-AMBR then its default bearer rule
+      traffic-qos-class : "silver" #if same as APN-AMBR then its default bearer rule
     - rule-name: rule2
       priority: 15
       action: "permit"
@@ -121,7 +121,7 @@ configuration:
     qos:
       uplink: 2000000   #2Mbps
       downlink: 5000000 #5Mbps
-      traffic-class: "silver" #default bearer QCI/ARP
+      traffic-qos-class: "silver" #default bearer QCI/ARP
     site-info:
       gNodeBs:
       - name: menlo-gnb1

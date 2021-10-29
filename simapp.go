@@ -95,7 +95,7 @@ type SliceId struct {
 type QosInfo struct {
 	Uplink       int    `yaml:"uplink,omitempty" json:"uplink,omitempty"`
 	Downlink     int    `yaml:"downlink,omitempty" json:"downlink,omitempty"`
-	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
+	TrafficClass string `yaml:"traffic-qos-class,omitempty" json:"traffic-qos-class,omitempty"`
 }
 
 type UeDnnQosInfo struct {
