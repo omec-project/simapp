@@ -95,12 +95,14 @@ type SliceId struct {
 type QosInfo struct {
 	Uplink       int    `yaml:"uplink,omitempty" json:"uplink,omitempty"`
 	Downlink     int    `yaml:"downlink,omitempty" json:"downlink,omitempty"`
+	BitRateUnit  string `yaml:"bitrate-unit,omitempty" json:"bitrate-unit,omitempty"`
 	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 }
 
 type UeDnnQosInfo struct {
 	Uplink       int               `yaml:"dnn-mbr-uplink,omitempty" json:"dnn-mbr-uplink,omitempty"`
 	Downlink     int               `yaml:"dnn-mbr-downlink,omitempty" json:"dnn-mbr-downlink,omitempty"`
+	BitRateUnit  string            `yaml:"bitrate-unit,omitempty" json:"bitrate-unit,omitempty"`
 	TrafficClass *TrafficClassInfo `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 }
 
@@ -158,9 +160,11 @@ type ApplicationFilteringRules struct {
 	// port range end
 	EndPort int32 `yaml:"end-port,omitempty" json:"end-port,omitempty"`
 
-	AppMbrUplink int32 `yaml:"app-mbr-uplink,omitempty" json:"app-mbr-uplink,omitempty"`
+	AppMbrUplink int64 `yaml:"app-mbr-uplink,omitempty" json:"app-mbr-uplink,omitempty"`
 
-	AppMbrDownlink int32 `yaml:"app-mbr-downlink,omitempty" json:"app-mbr-downlink,omitempty"`
+	AppMbrDownlink int64 `yaml:"app-mbr-downlink,omitempty" json:"app-mbr-downlink,omitempty"`
+
+	BitRateUnit string `yaml:"bitrate-unit,omitempty" json:"bitrate-unit,omitempty"`
 
 	TrafficClass *TrafficClassInfo `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 
