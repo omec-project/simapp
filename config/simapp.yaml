@@ -7,6 +7,7 @@ configuration:
   info:
     description: SIMAPP initial local configuration
     version: 1.0.0
+    http-version: 1
   logger:
     APP:
       ReportCaller: false
