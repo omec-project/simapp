@@ -16,6 +16,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -100,12 +101,14 @@ type SliceId struct {
 type QosInfo struct {
 	Uplink       int    `yaml:"uplink,omitempty" json:"uplink,omitempty"`
 	Downlink     int    `yaml:"downlink,omitempty" json:"downlink,omitempty"`
+	BitRateUnit  string `yaml:"bitrate-unit,omitempty" json:"bitrate-unit,omitempty"`
 	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 }
 
 type UeDnnQosInfo struct {
 	Uplink       int               `yaml:"dnn-mbr-uplink,omitempty" json:"dnn-mbr-uplink,omitempty"`
 	Downlink     int               `yaml:"dnn-mbr-downlink,omitempty" json:"dnn-mbr-downlink,omitempty"`
+	BitRateUnit  string            `yaml:"bitrate-unit,omitempty" json:"bitrate-unit,omitempty"`
 	TrafficClass *TrafficClassInfo `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 }
 
@@ -166,6 +169,8 @@ type ApplicationFilteringRules struct {
 	AppMbrUplink int32 `yaml:"app-mbr-uplink,omitempty" json:"app-mbr-uplink,omitempty"`
 
 	AppMbrDownlink int32 `yaml:"app-mbr-downlink,omitempty" json:"app-mbr-downlink,omitempty"`
+
+	BitRateUnit string `yaml:"bitrate-unit,omitempty" json:"bitrate-unit,omitempty"`
 
 	TrafficClass *TrafficClassInfo `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 
@@ -320,7 +325,8 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 		}
 
 		if rsp.StatusCode == http.StatusAccepted ||
-			rsp.StatusCode == http.StatusOK || rsp.StatusCode == http.StatusNoContent {
+			rsp.StatusCode == http.StatusOK || rsp.StatusCode == http.StatusNoContent ||
+			rsp.StatusCode == http.StatusCreated {
 			log.Println("config push success")
 			return rsp, nil
 		} else {
@@ -532,6 +538,11 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 	}
 	if qosNew.TrafficClass != qosOld.TrafficClass {
 		log.Println("Traffic Class changed ")
+		return true
+	}
+	appFilteringRulesNew := sliceNew.ApplicationFilteringRules
+	appFilteringRulesOld := sliceOld.ApplicationFilteringRules
+	if reflect.DeepEqual(appFilteringRulesNew, appFilteringRulesOld) == false {
 		return true
 	}
 	for _, ng := range sliceNew.DevGroups {

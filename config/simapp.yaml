@@ -44,8 +44,9 @@ configuration:
       mtu: 1460
       ue-ip-pool: 10.91.0.0/16
       ue-dnn-qos:
-        dnn-mbr-downlink: 20000000
-        dnn-mbr-uplink: 4000000
+        dnn-mbr-downlink: 20
+        dnn-mbr-uplink: 4
+        bitrate-unit: Mbps
         traffic-class:  #default bearer QCI/ARP
           name: "platinum"
           qci: 9
@@ -65,15 +66,17 @@ configuration:
       priority: 25
       action: "permit"
       endpoint: 0.0.0.0/0
-      app-mbr-uplink:   100000  #100kbps
-      app-mbr-downlink: 2000000 #2Mbps
+      app-mbr-uplink:   100 #100kbps
+      app-mbr-downlink: 2000 #2Mbps
+      bitrate-unit: Kbps
       traffic-class : "silver" #if same as APN-AMBR then its default bearer rule
     - rule-name: rule2
       priority: 15
       action: "permit"
       endpoint: 8.8.8.8/32
-      app-mbr-uplink: 1000000   #1Mbps
-      app-mbr-downlink: 4000000 #5Mbps
+      app-mbr-uplink: 1 #1Mbps
+      app-mbr-downlink: 5 #5Mbps
+      bitrate-unit: Mbps
       traffic-class : #if same as APN-AMBR then its default bearer rule
         name: "silver"
         qci: 9
@@ -84,8 +87,9 @@ configuration:
       priority: 25
       action: "permit"
       endpoint: 8.8.8.4/32
-      app-mbr-uplink: 120000
-      app-mbr-downlink: 520000
+      app-mbr-uplink: 120
+      app-mbr-downlink: 520
+      bitrate-unit: Kbps
       traffic-class : #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
         name: "platinum"
         qci: 9
@@ -99,6 +103,7 @@ configuration:
       endpoint: 1.1.1.1/32
       app-mbr-uplink: 120000
       app-mbr-downlink: 520000
+      bitrate-unit: bps
       traffic-class : #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
         name: "gold"
         qci: 9
@@ -112,6 +117,7 @@ configuration:
       endpoint: 1.1.1.2/32
       app-mbr-uplink: 120000
       app-mbr-downlink: 520000
+      bitrate-unit: bps
       traffic-class : #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
         name: "diamond"
         qci: 9
@@ -120,8 +126,9 @@ configuration:
         pelr: 6
       rule-trigger: "timer,0"  #immeidate creation of this bearer immediately. Create after 10 sec time.
     qos:
-      uplink: 2000000   #2Mbps
-      downlink: 5000000 #5Mbps
+      uplink: 2   #2Mbps
+      downlink: 5 #5Mbps
+      bitrate-unit: Mbps
       traffic-class: "silver" #default bearer QCI/ARP
     site-info:
       gNodeBs:
