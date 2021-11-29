@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"crypto/tls"
 	"encoding/hex"
@@ -314,9 +315,13 @@ func getNextBackoffInterval(retry, interval uint) uint {
 func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 	//Keep sending request to Http server until response is success
 	var retries uint = 0
+	body, _ := ioutil.ReadAll(req.Body)
 	for {
-		rsp, err := client.Do(req)
-		retries = +1
+		cloneReq := req.Clone(context.Background())
+		req.Body = ioutil.NopCloser(bytes.NewReader(body))
+		cloneReq.Body = ioutil.NopCloser(bytes.NewReader(body))
+		rsp, err := client.Do(cloneReq)
+		retries += 1
 		if err != nil {
 			nextInterval := getNextBackoffInterval(retries, 2)
 			log.Printf("http req send error [%v], retrying after %v sec...", err.Error(), nextInterval)
@@ -328,10 +333,12 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 			rsp.StatusCode == http.StatusOK || rsp.StatusCode == http.StatusNoContent ||
 			rsp.StatusCode == http.StatusCreated {
 			log.Println("config push success")
+			req.Body.Close()
 			return rsp, nil
 		} else {
 			nextInterval := getNextBackoffInterval(retries, 2)
 			log.Printf("http rsp error [%v], retrying after [%v] sec...", http.StatusText(rsp.StatusCode), nextInterval)
+			rsp.Body.Close()
 			time.Sleep(time.Second * time.Duration(nextInterval))
 		}
 	}
@@ -367,7 +374,8 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 		case subscriber:
 			httpend = subscriberHttpend + msg.name
 		}
-
+		var rsp *http.Response
+		var httpErr error
 		for {
 			if msg.msgOp == add_op {
 				log.Printf("Post Message [%v] to %v", msg.String(), httpend)
@@ -379,20 +387,12 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 
 				req.Header.Set("Content-Type", "application/json; charset=utf-8")
-				resp, err := sendHttpReqMsg(req)
-				if err != nil {
+				rsp, httpErr = sendHttpReqMsg(req)
+				if httpErr != nil {
 					log.Printf("Post Message [%v] returned error [%v] ", httpend, err.Error())
 				}
 
-				defer resp.Body.Close()
-				//Read the response body
-				_, err = ioutil.ReadAll(resp.Body)
-				if err != nil {
-					log.Println(err)
-					time.Sleep(1 * time.Second)
-					continue
-				}
-				fmt.Printf("Message Post %v Success\n", httpend)
+				fmt.Printf("Message POST %v Success\n", rsp.StatusCode)
 			} else if msg.msgOp == modify_op {
 				log.Printf("Put Message [%v] to %v", msg.String(), httpend)
 
@@ -405,12 +405,12 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 				// set the request header Content-Type for json
 				req.Header.Set("Content-Type", "application/json; charset=utf-8")
-				resp, err := sendHttpReqMsg(req)
-				if err != nil {
+				rsp, httpErr = sendHttpReqMsg(req)
+				if httpErr != nil {
 					log.Printf("Put Message [%v] returned error [%v] ", httpend, err.Error())
 				}
 
-				fmt.Printf("Message PUT %v Success\n", resp.StatusCode)
+				fmt.Printf("Message PUT %v Success\n", rsp.StatusCode)
 			} else if msg.msgOp == delete_op {
 				log.Printf("Delete Message [%v] to %v", msg.String(), httpend)
 
@@ -423,12 +423,13 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 				// set the request header Content-Type for json
 				req.Header.Set("Content-Type", "application/json; charset=utf-8")
-				resp, err := sendHttpReqMsg(req)
-				if err != nil {
+				rsp, httpErr = sendHttpReqMsg(req)
+				if httpErr != nil {
 					log.Printf("Delete Message [%v] returned error [%v] ", httpend, err.Error())
 				}
-				fmt.Printf("Message DEL %v Success\n", resp.StatusCode)
+				fmt.Printf("Message DEL %v Success\n", rsp.StatusCode)
 			}
+			rsp.Body.Close()
 			break
 		}
 	}
