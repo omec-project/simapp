@@ -47,6 +47,7 @@ type Configuration struct {
 	NetworkSlice      []*NetworkSlice    `yaml:"network-slices,omitempty"`
 	Subscriber        []*Subscriber      `yaml:"subscribers,omitempty"`
 	SubProvisionEndpt *SubProvisionEndpt `yaml:"sub-provision-endpt,omitempty"`
+	SubProxyEndpt     *SubProxyEndpt     `yaml:"sub-proxy-endpt,omitempty"`
 }
 
 type DevGroup struct {
@@ -69,8 +70,8 @@ type IpDomain struct {
 
 type Subscriber struct {
 	UeId           string
-	UeIdStart      string `yaml:"ueId-start,omitempty" json:"ueId-start,omitempty"`
-	UeIdEnd        string `yaml:"ueId-end,omitempty" json:"ueId-end,omitempty"`
+	UeIdStart      string `yaml:"ueId-start,omitempty"`
+	UeIdEnd        string `yaml:"ueId-end,omitempty"`
 	PlmnId         string `yaml:"plmnId,omitempty" json:"plmnId,omitempty"`
 	OPc            string `yaml:"opc,omitempty" json:"opc,omitempty"`
 	OP             string `yaml:"op,omitempty" json:"op,omitempty"`
@@ -83,10 +84,14 @@ type SubProvisionEndpt struct {
 	Port string `yaml:"port,omitempty" json:"port,omitempty"`
 }
 
+type SubProxyEndpt struct {
+	Addr string `yaml:"addr,omitempty" json:"addr,omitempty"`
+	Port string `yaml:"port,omitempty" json:"port,omitempty"`
+}
+
 type NetworkSlice struct {
 	Name                      string                       `yaml:"name,omitempty" json:"name,omitempty"`
 	SliceId                   *SliceId                     `yaml:"slice-id,omitempty" json:"slice-id,omitempty"`
-	Qos                       *QosInfo                     `yaml:"qos,omitempty" json:"qos,omitempty"`
 	DevGroups                 []string                     `yaml:"site-device-group,omitempty" json:"site-device-group,omitempty"`
 	SiteInfo                  *SiteInfo                    `yaml:"site-info,omitempty" json:"site-info,omitempty"`
 	ApplicationFilteringRules []*ApplicationFilteringRules `yaml:"application-filtering-rules,omitempty" json:"application-filtering-rules,omitempty"`
@@ -97,13 +102,6 @@ type NetworkSlice struct {
 type SliceId struct {
 	Sst string `yaml:"sst,omitempty" json:"sst,omitempty"`
 	Sd  string `yaml:"sd,omitempty" json:"sd,omitempty"`
-}
-
-type QosInfo struct {
-	Uplink       int    `yaml:"uplink,omitempty" json:"uplink,omitempty"`
-	Downlink     int    `yaml:"downlink,omitempty" json:"downlink,omitempty"`
-	BitRateUnit  string `yaml:"bitrate-unit,omitempty" json:"bitrate-unit,omitempty"`
-	TrafficClass string `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 }
 
 type UeDnnQosInfo struct {
@@ -223,7 +221,7 @@ var SimappConfig Config
 var configMsgChan chan configMessage
 var client *http.Client
 
-func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionEndpt *SubProvisionEndpt) error {
+func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionEndpt *SubProvisionEndpt, subProxyEndpt *SubProxyEndpt) error {
 	log.Println("Function called ", f)
 	if content, err := ioutil.ReadFile(f); err != nil {
 		log.Println("Readfile failed called ", err)
@@ -264,6 +262,14 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 	subProvisionEndpt.Addr = SimappConfig.Configuration.SubProvisionEndpt.Addr
 	subProvisionEndpt.Port = SimappConfig.Configuration.SubProvisionEndpt.Port
 
+	if SimappConfig.Configuration.SubProxyEndpt != nil && SimappConfig.Configuration.SubProxyEndpt.Addr != "" {
+		log.Println("Subscriber Proxy Endpoint:")
+		log.Println("Address ", SimappConfig.Configuration.SubProxyEndpt.Addr)
+		log.Println("Port ", SimappConfig.Configuration.SubProxyEndpt.Port)
+		subProxyEndpt.Addr = SimappConfig.Configuration.SubProxyEndpt.Addr
+		subProxyEndpt.Port = SimappConfig.Configuration.SubProxyEndpt.Port
+	}
+
 	viper.SetConfigName("simapp.yaml")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("/simapp/config")
@@ -284,10 +290,11 @@ func main() {
 	log.Println("SimApp started")
 	configMsgChan = make(chan configMessage, 100)
 	var subProvisionEndpt SubProvisionEndpt
+	var subProxyEndpt SubProxyEndpt
 
-	InitConfigFactory("./config/simapp.yaml", configMsgChan, &subProvisionEndpt)
+	InitConfigFactory("./config/simapp.yaml", configMsgChan, &subProvisionEndpt, &subProxyEndpt)
 
-	go sendMessage(configMsgChan, subProvisionEndpt)
+	go sendMessage(configMsgChan, subProvisionEndpt, subProxyEndpt)
 	go WatchConfig()
 
 	dispatchAllSubscribers(configMsgChan)
@@ -344,7 +351,7 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 	}
 }
 
-func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt) {
+func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt, subProxyEndpt SubProxyEndpt) {
 	var devGroupHttpend string
 	var networkSliceHttpend string
 	var subscriberHttpend string
@@ -362,9 +369,20 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 	log.Println("network slice http endpoint ", devGroupHttpend)
 	subscriberHttpend = "http://" + ip + ":" + subProvisionEndpt.Port + "/api/subscriber/imsi-"
 	log.Println("subscriber http endpoint ", subscriberHttpend)
+	baseDestUrl := subscriberHttpend
+	if subProxyEndpt.Port != "" {
+		ip := strings.TrimSpace(subProxyEndpt.Addr)
+		devGroupHttpend = "http://" + ip + ":" + subProxyEndpt.Port + "/config/v1/device-group/"
+		log.Println("device trigger Proxy http endpoint ", devGroupHttpend)
+		networkSliceHttpend = "http://" + ip + ":" + subProxyEndpt.Port + "/config/v1/network-slice/"
+		log.Println("network slice Proxy http endpoint ", devGroupHttpend)
+		subscriberHttpend = "http://" + ip + ":" + subProxyEndpt.Port + "/api/subscriber/imsi-"
+		log.Println("subscriber Proxy http endpoint ", subscriberHttpend)
+	}
 
 	for msg := range msgChan {
 		var httpend string
+		var destUrl string
 		log.Println("Received Message from Channel", msgChan, msg)
 		switch msg.msgType {
 		case device_group:
@@ -373,6 +391,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 			httpend = networkSliceHttpend + msg.name
 		case subscriber:
 			httpend = subscriberHttpend + msg.name
+			destUrl = baseDestUrl + msg.name
 		}
 		var rsp *http.Response
 		var httpErr error
@@ -387,6 +406,9 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 
 				req.Header.Set("Content-Type", "application/json; charset=utf-8")
+				if subProxyEndpt.Port != "" {
+					req.Header.Add("Dest-Url", destUrl)
+				}
 				rsp, httpErr = sendHttpReqMsg(req)
 				if httpErr != nil {
 					log.Printf("Post Message [%v] returned error [%v] ", httpend, err.Error())
@@ -405,6 +427,9 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 				// set the request header Content-Type for json
 				req.Header.Set("Content-Type", "application/json; charset=utf-8")
+				if subProxyEndpt.Port != "" {
+					req.Header.Add("Dest-Url", destUrl)
+				}
 				rsp, httpErr = sendHttpReqMsg(req)
 				if httpErr != nil {
 					log.Printf("Put Message [%v] returned error [%v] ", httpend, err.Error())
@@ -423,6 +448,9 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 				// set the request header Content-Type for json
 				req.Header.Set("Content-Type", "application/json; charset=utf-8")
+				if subProxyEndpt.Port != "" {
+					req.Header.Add("Dest-Url", destUrl)
+				}
 				rsp, httpErr = sendHttpReqMsg(req)
 				if httpErr != nil {
 					log.Printf("Delete Message [%v] returned error [%v] ", httpend, err.Error())
@@ -527,20 +555,6 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 
 func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 	//slice Id should not change
-	qosNew := sliceNew.Qos
-	qosOld := sliceOld.Qos
-	if qosNew.Uplink != qosOld.Uplink {
-		log.Println("Uplink Rate changed ")
-		return true
-	}
-	if qosNew.Downlink != qosOld.Downlink {
-		log.Println("Downlink Rate changed ")
-		return true
-	}
-	if qosNew.TrafficClass != qosOld.TrafficClass {
-		log.Println("Traffic Class changed ")
-		return true
-	}
 	appFilteringRulesNew := sliceNew.ApplicationFilteringRules
 	appFilteringRulesOld := sliceOld.ApplicationFilteringRules
 	if reflect.DeepEqual(appFilteringRulesNew, appFilteringRulesOld) == false {
@@ -932,7 +946,6 @@ func dispatchAllGroups(configMsgChan chan configMessage) {
 func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice, msgOp int) {
 	log.Println("  Slice Name : ", slice.Name)
 	fmt.Printf("  Slice sst %v, sd %v", slice.SliceId.Sst, slice.SliceId.Sd)
-	log.Println("  QoS information ", slice.Qos)
 	log.Println("  Slice site info ", slice.SiteInfo)
 	site := slice.SiteInfo
 	log.Println("  Slice site name ", site.SiteName)

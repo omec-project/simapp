@@ -28,8 +28,11 @@ configuration:
     key: 22222222222222222222222222222222
     sequenceNumber: 222222222
   provision-network-slice: false
-  sub-provision-endpt:
+  sub-provision-endpt: #points to sdcore endpoint
     addr: webui #should be webui for 5G and config4g for 4G
+    port: 5000
+  sub-proxy-endpt: #points to proxy endpoiint
+    addr: subproxy.roc.xxx #should be set to ROC subscriber proxy
     port: 5000
   device-groups:
   - name:  "iot-camera"
