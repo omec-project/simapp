@@ -70,8 +70,8 @@ type IpDomain struct {
 
 type Subscriber struct {
 	UeId           string
-	UeIdStart      string `yaml:"ueId-start,omitempty"`
-	UeIdEnd        string `yaml:"ueId-end,omitempty"`
+	UeIdStart      string `yaml:"ueId-start,omitempty" json:"-",omitempty`
+	UeIdEnd        string `yaml:"ueId-end,omitempty" json:"-", omitempty`
 	PlmnId         string `yaml:"plmnId,omitempty" json:"plmnId,omitempty"`
 	OPc            string `yaml:"opc,omitempty" json:"opc,omitempty"`
 	OP             string `yaml:"op,omitempty" json:"op,omitempty"`
@@ -141,14 +141,6 @@ type Upf struct {
 	UpfPort int    `yaml:"upf-port,omitempty" json:"upf-port,omitempty"`
 }
 
-type AppInfo struct {
-	AppName   string `yaml:"app-name,omitempty" json:"app-name,omitempty"`
-	EndPort   int    `yaml:"end-port,omitempty" json:"end-port,omitempty"`
-	EndPoint  string `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
-	Protocol  int    `yaml:"protocol,omitempty" json:"protocol,omitempty"`
-	StartPort int    `yaml:"start-port,omitempty" json:"start-port,omitempty"`
-}
-
 type ApplicationFilteringRules struct {
 	// Rule name
 	RuleName string `yaml:"rule-name,omitempty" json:"rule-name,omitempty"`
@@ -161,9 +153,9 @@ type ApplicationFilteringRules struct {
 	//protocol
 	Protocol int32 `yaml:"protocol,omitempty" json:"protocol,omitempty"`
 	// port range start
-	StartPort int32 `yaml:"start-port,omitempty" json:"start-port,omitempty"`
+	StartPort int32 `yaml:"dest-port-start,omitempty" json:"dest-port-start,omitempty"`
 	// port range end
-	EndPort int32 `yaml:"end-port,omitempty" json:"end-port,omitempty"`
+	EndPort int32 `yaml:"dest-port-end,omitempty" json:"dest-port-end,omitempty"`
 
 	AppMbrUplink int32 `yaml:"app-mbr-uplink,omitempty" json:"app-mbr-uplink,omitempty"`
 
