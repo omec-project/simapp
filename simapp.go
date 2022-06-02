@@ -636,29 +636,29 @@ func UpdateConfig(f string) error {
 			log.Println("    Key", newSubscribers.Key)
 			log.Println("    SequenceNumber", newSubscribers.SequenceNumber)
 
-			newStart, err := strconv.ParseUint(newSubscribers.UeIdStart, 0, 64)
+			newStart, err := strconv.Atoi(newSubscribers.UeIdStart)
 			if err != nil {
-				log.Println("error in ParseUint with UeIdStart", err)
+				log.Println("error in Atoi with UeIdStart", err)
 				continue
 			}
-			newEnd, err := strconv.ParseUint(newSubscribers.UeIdEnd, 0, 64)
+			newEnd, err := strconv.Atoi(newSubscribers.UeIdEnd)
 			if err != nil {
-				log.Println("error in ParseUint with UeIdEnd", err)
+				log.Println("error in Atoi with UeIdEnd", err)
 				continue
 			}
 			for i := newStart; i <= newEnd; i++ {
 				found := false
-				newImsiList = append(newImsiList, i)
+				newImsiList = append(newImsiList, uint64(i))
 				for s := 0; s < len(SimappConfig.Configuration.Subscriber); s++ {
 					subscribers := SimappConfig.Configuration.Subscriber[s]
-					start, err := strconv.ParseUint(subscribers.UeIdStart, 0, 64)
+					start, err := strconv.Atoi(subscribers.UeIdStart)
 					if err != nil {
-						log.Println("error in ParseUint with UeIdStart", err)
+						log.Println("error in Atoi with UeIdStart", err)
 						continue
 					}
-					end, err := strconv.ParseUint(subscribers.UeIdEnd, 0, 64)
+					end, err := strconv.Atoi(subscribers.UeIdEnd)
 					if err != nil {
-						log.Println("error in ParseUint with UeIdEnd", err)
+						log.Println("error in Atoi with UeIdEnd", err)
 						continue
 					}
 					for j := start; j <= end; j++ {
@@ -675,11 +675,7 @@ func UpdateConfig(f string) error {
 					continue
 				}
 				// add subscriber to chan
-				newSubscribers.UeId = strconv.FormatUint(i, 10)
-				if err != nil {
-					log.Println("error in FormatUint with UeId", err)
-					continue
-				}
+				newSubscribers.UeId = fmt.Sprintf("%015d", i)
 
 				b, err := json.Marshal(newSubscribers)
 				if err != nil {
@@ -698,20 +694,20 @@ func UpdateConfig(f string) error {
 		//delete all the exsiting subscribers not show up in new config.
 		for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
 			subscribers := SimappConfig.Configuration.Subscriber[o]
-			start, err := strconv.ParseUint(subscribers.UeIdStart, 0, 64)
+			start, err := strconv.Atoi(subscribers.UeIdStart)
 			if err != nil {
-				log.Println("error in ParseUint with UeIdStart", err)
+				log.Println("error in Atoi with UeIdStart", err)
 				continue
 			}
-			end, err := strconv.ParseUint(subscribers.UeIdEnd, 0, 64)
+			end, err := strconv.Atoi(subscribers.UeIdEnd)
 			if err != nil {
-				log.Println("error in ParseUint with UeIdEnd", err)
+				log.Println("error in Atoi with UeIdEnd", err)
 				continue
 			}
 			for k := start; k <= end; k++ {
 				has := false
 				for _, v := range newImsiList {
-					if v == k {
+					if v == uint64(k) {
 						has = true
 					}
 				}
@@ -726,7 +722,7 @@ func UpdateConfig(f string) error {
 					var msg configMessage
 					msg.msgPtr = reqMsgBody
 					msg.msgType = subscriber
-					msg.name = strconv.FormatUint(k, 10)
+					msg.name = fmt.Sprintf("%015d", k)
 					msg.msgOp = delete_op
 					configMsgChan <- msg
 				}
@@ -859,23 +855,19 @@ func dispatchAllSubscribers(configMsgChan chan configMessage) {
 		log.Println("    Key", subscribers.Key)
 		log.Println("    SequenceNumber", subscribers.SequenceNumber)
 
-		start, err := strconv.ParseUint(subscribers.UeIdStart, 0, 64)
+		start, err := strconv.Atoi(subscribers.UeIdStart)
 		if err != nil {
-			log.Println("error in ParseUint with UeIdStart", err)
+			log.Println("error in Atoi with UeIdStart", err)
 			continue
 		}
-		end, err := strconv.ParseUint(subscribers.UeIdEnd, 0, 64)
+		end, err := strconv.Atoi(subscribers.UeIdEnd)
 		if err != nil {
-			log.Println("error in ParseUint with UeIdEnd", err)
+			log.Println("error in Atoi with UeIdEnd", err)
 			continue
 		}
 		for i := start; i <= end; i++ {
-			subscribers.UeId = strconv.FormatUint(i, 10)
+			subscribers.UeId = fmt.Sprintf("%015d", i)
 			log.Println("    UeId", subscribers.UeId)
-			if err != nil {
-				log.Println("error in FormatUint with UeId", err)
-				continue
-			}
 			//			subscribers.UeIdStart = ""
 			//			subscribers.UeIdEnd = ""
 			b, err := json.Marshal(subscribers)
