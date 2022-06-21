@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/free5gc/logger_util"
+	"github.com/omec-project/logger_util"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 	"golang.org/x/net/http2"
