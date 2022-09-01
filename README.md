@@ -3,8 +3,7 @@ Copyright 2021-present Open Networking Foundation
 SPDX-License-Identifier: Apache-2.0
 
 -->
-
-# simapp
+# Simapp
 ## Sim subscription app for Aether
 ### Subscriber Configuration
         - SIMApp can configure devices in 5G as well as in 4G.
@@ -16,3 +15,8 @@ SPDX-License-Identifier: Apache-2.0
         - Update device-groups, network-slices as per your need
         - provision-network-slice should be set to true if you need simapp to configure slices as well.
         - In case ROC is running in the deployment then network slices can be configured from ROC.
+
+## Reach out to us thorugh
+1. #sdcore-dev channel in [ONF Community Slack](https://onf-community.slack.com/)
+2. Extensive SD-Core documentation can be found at [SD-Core Documentation](https://docs.sd-core.opennetworking.org/master/index.html)
+3. Raise Github issues
