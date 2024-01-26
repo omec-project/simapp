@@ -24,6 +24,14 @@ jobs:
       - name: Build
         run: go build
 
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: make docker-build
+
   license-check:
     runs-on: ubuntu-latest
     steps:
