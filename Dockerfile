@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-FROM golang:1.18.0-stretch AS sim
+FROM golang:1.21.6-bookworm AS sim
 
 LABEL maintainer="ONF <omec-dev@opennetworking.org>"
 
 RUN apt-get update && apt-get -y install vim
 RUN cd $GOPATH/src && mkdir -p simapp
 COPY . $GOPATH/src/simapp
-RUN cd $GOPATH/src/simapp && go install 
+RUN cd $GOPATH/src/simapp && go install
 
 FROM alpine:3.16 AS simapp
 
