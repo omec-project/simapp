@@ -12,7 +12,7 @@ RUN cd $GOPATH/src && mkdir -p simapp
 COPY . $GOPATH/src/simapp
 RUN cd $GOPATH/src/simapp && go install
 
-FROM alpine:3.16 AS simapp
+FROM alpine:3.19 AS simapp
 
 #RUN apk update && apk add -U libc6-compat vim strace net-tools curl netcat-openbsd bind-tools bash
 RUN apk update && apk add -U gcompat vim strace net-tools curl netcat-openbsd bind-tools bash
