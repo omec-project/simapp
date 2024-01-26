@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2024 Intel Corporation
+
+# Toolchain
+.idea/
+.vscode/
+GPATH
+GRTAGS
+GTAGS
+TAGS
+tags
+cscope.*
+
+# debug
+*.log
+*.pcap
+vendor*
+
+simapp
