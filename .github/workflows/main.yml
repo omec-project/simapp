@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2024 Intel Corporation
 
-name: Master workflow
+name: Main workflow
 
 on:
   pull_request:
     branches:
-      - master
+      - main
   push:
     branches:
-      - master
+      - main
 
 jobs:
   build:
@@ -46,9 +46,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: FOSSA scan
-        uses: fossa-contrib/fossa-action@v3
+        uses: fossas/fossa-action@main
         with:
-          fossa-api-key: 9dc8fa92e3dd565687317beb87b56d89
+          api-key: ${{secrets.fossaApiKey}}
 
   unit-tests:
     runs-on: ubuntu-latest
