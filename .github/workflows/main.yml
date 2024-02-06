@@ -46,9 +46,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: FOSSA scan
-        uses: fossas/fossa-action@main
+        uses: fossa-contrib/fossa-action@v3
         with:
-          api-key: ${{secrets.fossaApiKey}}
+          fossa-api-key: 0c3bbcdf20e157bbd487dae173751b28
 
   unit-tests:
     runs-on: ubuntu-latest
