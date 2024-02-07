@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-FROM golang:1.21.6-bookworm AS sim
+FROM golang:1.22.0-bookworm AS sim
 
 LABEL maintainer="ONF <omec-dev@opennetworking.org>"
 
