@@ -10,7 +10,7 @@ LABEL maintainer="ONF <omec-dev@opennetworking.org>"
 RUN apt-get update && apt-get -y install vim
 RUN cd $GOPATH/src && mkdir -p simapp
 COPY . $GOPATH/src/simapp
-RUN cd $GOPATH/src/simapp && go install
+RUN cd $GOPATH/src/simapp && CGO_ENABLED=0 go install
 
 FROM alpine:3.19 AS simapp
 
