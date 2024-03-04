@@ -95,7 +95,6 @@ test: .coverage
 			-v \
 			./ ./...
 
-
 fmt:
 	@go fmt ./...
 
