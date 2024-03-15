@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/omec-project/logger_util v1.1.0
+	github.com/omec-project/logger_util v1.2.0
 	github.com/spf13/viper v1.18.2
 	golang.org/x/net v0.22.0
 	gopkg.in/yaml.v2 v2.4.0
