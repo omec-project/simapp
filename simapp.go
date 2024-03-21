@@ -408,7 +408,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 				rsp, httpErr = sendHttpReqMsg(req)
 				if httpErr != nil {
-					log.Printf("Post Message [%v] returned error [%v] ", httpend, err.Error())
+					log.Printf("Post Message [%v] returned error [%v] ", httpend, httpErr.Error())
 				}
 
 				fmt.Printf("Message POST %v Success\n", rsp.StatusCode)
@@ -429,7 +429,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 				rsp, httpErr = sendHttpReqMsg(req)
 				if httpErr != nil {
-					log.Printf("Put Message [%v] returned error [%v] ", httpend, err.Error())
+					log.Printf("Put Message [%v] returned error [%v] ", httpend, httpErr.Error())
 				}
 
 				fmt.Printf("Message PUT %v Success\n", rsp.StatusCode)
@@ -450,7 +450,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 				rsp, httpErr = sendHttpReqMsg(req)
 				if httpErr != nil {
-					log.Printf("Delete Message [%v] returned error [%v] ", httpend, err.Error())
+					log.Printf("Delete Message [%v] returned error [%v] ", httpend, httpErr.Error())
 				}
 				fmt.Printf("Message DEL %v Success\n", rsp.StatusCode)
 			}
@@ -553,7 +553,7 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 	// slice Id should not change
 	appFilteringRulesNew := sliceNew.ApplicationFilteringRules
 	appFilteringRulesOld := sliceOld.ApplicationFilteringRules
-	if reflect.DeepEqual(appFilteringRulesNew, appFilteringRulesOld) == false {
+	if !reflect.DeepEqual(appFilteringRulesNew, appFilteringRulesOld) {
 		return true
 	}
 	for _, ng := range sliceNew.DevGroups {
@@ -564,7 +564,7 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 				break
 			}
 		}
-		if found == false {
+		if !found {
 			log.Println("new Dev Group added in slice ")
 			return true // 2 network slices have some difference
 		}
@@ -577,7 +577,7 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 				break
 			}
 		}
-		if found == false {
+		if !found {
 			log.Println("Dev Group Deleted in slice ")
 			return true // 2 network slices have some difference
 		}
@@ -603,7 +603,7 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 				break
 			}
 		}
-		if found == false {
+		if !found {
 			log.Println("gnb changed in slice ")
 			return true // change in slice details
 		}
@@ -668,14 +668,14 @@ func UpdateConfig(f string) error {
 					for j := start; j <= end; j++ {
 						if i == j { // two subcribers' imsi are same
 							found = true
-							if compareSubscriber(newSubscribers, subscribers) == true {
+							if compareSubscriber(newSubscribers, subscribers) {
 								log.Println("WARNING: subscriber provision not support modify yet!")
 							}
 							break
 						}
 					}
 				}
-				if found == true {
+				if found {
 					continue
 				}
 				// add subscriber to chan
@@ -715,7 +715,7 @@ func UpdateConfig(f string) error {
 						has = true
 					}
 				}
-				if has == false {
+				if !has {
 					log.Println("going to delete subscriber: ", k)
 					b, err := json.Marshal("")
 					if err != nil {
@@ -743,7 +743,7 @@ func UpdateConfig(f string) error {
 			for _, groupOld := range SimappConfig.Configuration.DevGroup {
 				if groupNew.Name == groupOld.Name {
 					configChange := compareGroup(groupNew, groupOld)
-					if configChange == true {
+					if configChange {
 						// send Group Put
 						log.Println("Updated group config ", groupNew.Name)
 						dispatchGroup(configMsgChan, groupNew, modify_op)
@@ -764,7 +764,7 @@ func UpdateConfig(f string) error {
 					break
 				}
 			}
-			if found == false {
+			if !found {
 				// new Group - Send Post
 				log.Println("New group config ", groupNew.Name)
 				dispatchGroup(configMsgChan, groupNew, add_op)
@@ -772,7 +772,7 @@ func UpdateConfig(f string) error {
 		}
 		// visit all groups see if slice is deleted...if found = false
 		for _, group := range SimappConfig.Configuration.DevGroup {
-			if group.visited == false {
+			if !group.visited {
 				log.Println("Group deleted ", group.Name)
 				dispatchGroup(configMsgChan, group, delete_op)
 				// find all slices which are using this device group and mark them modified
@@ -799,11 +799,11 @@ func UpdateConfig(f string) error {
 			for _, sliceOld := range SimappConfig.Configuration.NetworkSlice {
 				if sliceNew.Name == sliceOld.Name {
 					configChange := compareNetworkSlice(sliceNew, sliceOld)
-					if sliceOld.modified == true {
+					if sliceOld.modified {
 						log.Println("Updated slice config ", sliceNew.Name)
 						sliceOld.modified = false
 						dispatchNetworkSlice(configMsgChan, sliceNew, modify_op)
-					} else if configChange == true {
+					} else if configChange {
 						// send Slice Put
 						log.Println("Updated slice config ", sliceNew.Name)
 						dispatchNetworkSlice(configMsgChan, sliceNew, modify_op)
@@ -815,7 +815,7 @@ func UpdateConfig(f string) error {
 					break
 				}
 			}
-			if found == false {
+			if !found {
 				// new Slice - Send Post
 				log.Println("New slice config ", sliceNew.Name)
 				dispatchNetworkSlice(configMsgChan, sliceNew, add_op)
@@ -823,7 +823,7 @@ func UpdateConfig(f string) error {
 		}
 		// visit all sliceOld see if slice is deleted...if found = false
 		for _, slice := range SimappConfig.Configuration.NetworkSlice {
-			if slice.visited == false {
+			if !slice.visited {
 				log.Println("Slice deleted ", slice.Name)
 				dispatchNetworkSlice(configMsgChan, slice, delete_op)
 			}
@@ -911,7 +911,7 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int)
 		return
 	}
 	reqMsgBody := bytes.NewBuffer(b)
-	if SimappConfig.Configuration.ConfigSlice == false {
+	if !SimappConfig.Configuration.ConfigSlice {
 		log.Println("Don't configure network slice ")
 		return
 	}
@@ -955,7 +955,7 @@ func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice,
 	}
 	reqMsgBody := bytes.NewBuffer(b)
 
-	if SimappConfig.Configuration.ConfigSlice == false {
+	if !SimappConfig.Configuration.ConfigSlice {
 		log.Println("Don't configure network slice ")
 		return
 	}
