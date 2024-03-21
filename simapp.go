@@ -289,7 +289,10 @@ func main() {
 	var subProvisionEndpt SubProvisionEndpt
 	var subProxyEndpt SubProxyEndpt
 
-	InitConfigFactory("./config/simapp.yaml", configMsgChan, &subProvisionEndpt, &subProxyEndpt)
+	err := InitConfigFactory("./config/simapp.yaml", configMsgChan, &subProvisionEndpt, &subProxyEndpt)
+	if err != nil {
+		log.Println(err)
+	}
 
 	go sendMessage(configMsgChan, subProvisionEndpt, subProxyEndpt)
 	go WatchConfig()
@@ -299,7 +302,11 @@ func main() {
 	dispatchAllNetworkSlices(configMsgChan)
 
 	http.HandleFunc("/synchronize", syncConfig)
-	http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":8080", nil)
+	if err != nil {
+		// Note: as per the `ListenAndServe` documentation: "ListenAndServe always returns a non-nil error."
+		log.Println(err)
+	}
 	for {
 		time.Sleep(100 * time.Second)
 	}
@@ -319,7 +326,10 @@ func getNextBackoffInterval(retry, interval uint) uint {
 func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 	// Keep sending request to Http server until response is success
 	var retries uint = 0
-	body, _ := io.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Println(err)
+	}
 	for {
 		cloneReq := req.Clone(context.Background())
 		req.Body = io.NopCloser(bytes.NewReader(body))
@@ -337,12 +347,18 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 			rsp.StatusCode == http.StatusOK || rsp.StatusCode == http.StatusNoContent ||
 			rsp.StatusCode == http.StatusCreated {
 			log.Println("config push success")
-			req.Body.Close()
+			err = req.Body.Close()
+			if err != nil {
+				log.Println(err)
+			}
 			return rsp, nil
 		} else {
 			nextInterval := getNextBackoffInterval(retries, 2)
 			log.Printf("http rsp error [%v], retrying after [%v] sec...", http.StatusText(rsp.StatusCode), nextInterval)
-			rsp.Body.Close()
+			err = rsp.Body.Close()
+			if err != nil {
+				log.Println(err)
+			}
 			time.Sleep(time.Second * time.Duration(nextInterval))
 		}
 	}
@@ -395,7 +411,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 		for {
 			if msg.msgOp == add_op {
 				log.Printf("Post Message [%v] to %v", msg.String(), httpend)
-				req, err := http.NewRequest(http.MethodPost, httpend, msg.msgPtr)
+				req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, httpend, msg.msgPtr)
 				if err != nil {
 					fmt.Printf("An Error Occurred %v", err)
 					time.Sleep(1 * time.Second)
@@ -415,7 +431,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 			} else if msg.msgOp == modify_op {
 				log.Printf("Put Message [%v] to %v", msg.String(), httpend)
 
-				req, err := http.NewRequest(http.MethodPut, httpend, msg.msgPtr)
+				req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, httpend, msg.msgPtr)
 				// Handle Error
 				if err != nil {
 					fmt.Printf("An Error Occurred %v", err)
@@ -436,7 +452,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 			} else if msg.msgOp == delete_op {
 				log.Printf("Delete Message [%v] to %v", msg.String(), httpend)
 
-				req, err := http.NewRequest(http.MethodDelete, httpend, msg.msgPtr)
+				req, err := http.NewRequestWithContext(context.Background(), http.MethodDelete, httpend, msg.msgPtr)
 				// Handle Error
 				if err != nil {
 					fmt.Printf("An Error Occurred %v", err)
@@ -454,7 +470,10 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 				fmt.Printf("Message DEL %v Success\n", rsp.StatusCode)
 			}
-			rsp.Body.Close()
+			err := rsp.Body.Close()
+			if err != nil {
+				log.Println(err)
+			}
 			break
 		}
 	}
