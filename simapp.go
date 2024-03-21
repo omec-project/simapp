@@ -13,17 +13,18 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/omec-project/logger_util"
 	"github.com/fsnotify/fsnotify"
+	"github.com/omec-project/logger_util"
 	"github.com/spf13/viper"
 	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v2"
@@ -144,13 +145,13 @@ type Upf struct {
 type ApplicationFilteringRules struct {
 	// Rule name
 	RuleName string `yaml:"rule-name,omitempty" json:"rule-name,omitempty"`
-	//priority
+	// priority
 	Priority int32 `yaml:"priority,omitempty" json:"priority,omitempty"`
-	//action
+	// action
 	Action string `yaml:"action,omitempty" json:"action,omitempty"`
 	// Application Desination IP or network
 	Endpoint string `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
-	//protocol
+	// protocol
 	Protocol int32 `yaml:"protocol,omitempty" json:"protocol,omitempty"`
 	// port range start
 	StartPort int32 `yaml:"dest-port-start,omitempty" json:"dest-port-start,omitempty"`
@@ -179,6 +180,8 @@ const (
 	network_slice
 	subscriber
 )
+
+const httpProtocol = "http://"
 
 type configMessage struct {
 	msgPtr  *bytes.Buffer
@@ -209,13 +212,15 @@ func (msg configMessage) String() string {
 	return fmt.Sprintf("Config msg name [%v], type [%v], op [%v]", msg.name, msgType, msgOp)
 }
 
-var SimappConfig Config
-var configMsgChan chan configMessage
-var client *http.Client
+var (
+	SimappConfig  Config
+	configMsgChan chan configMessage
+	client        *http.Client
+)
 
 func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionEndpt *SubProvisionEndpt, subProxyEndpt *SubProxyEndpt) error {
 	log.Println("Function called ", f)
-	if content, err := ioutil.ReadFile(f); err != nil {
+	if content, err := os.ReadFile(f); err != nil {
 		log.Println("Readfile failed called ", err)
 		return err
 	} else {
@@ -231,7 +236,7 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 		return nil
 	}
 
-	//set http client
+	// set http client
 	if SimappConfig.Info.HttpVersion == 2 {
 		client = &http.Client{
 			Transport: &http2.Transport{
@@ -312,13 +317,13 @@ func getNextBackoffInterval(retry, interval uint) uint {
 }
 
 func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
-	//Keep sending request to Http server until response is success
+	// Keep sending request to Http server until response is success
 	var retries uint = 0
-	body, _ := ioutil.ReadAll(req.Body)
+	body, _ := io.ReadAll(req.Body)
 	for {
 		cloneReq := req.Clone(context.Background())
-		req.Body = ioutil.NopCloser(bytes.NewReader(body))
-		cloneReq.Body = ioutil.NopCloser(bytes.NewReader(body))
+		req.Body = io.NopCloser(bytes.NewReader(body))
+		cloneReq.Body = io.NopCloser(bytes.NewReader(body))
 		rsp, err := client.Do(cloneReq)
 		retries += 1
 		if err != nil {
@@ -355,20 +360,20 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 	ip := strings.TrimSpace(subProvisionEndpt.Addr)
 
 	log.Println("webui running at ", ip)
-	devGroupHttpend = "http://" + ip + ":" + subProvisionEndpt.Port + "/config/v1/device-group/"
+	devGroupHttpend = httpProtocol + ip + ":" + subProvisionEndpt.Port + "/config/v1/device-group/"
 	log.Println("device trigger  http endpoint ", devGroupHttpend)
-	networkSliceHttpend = "http://" + ip + ":" + subProvisionEndpt.Port + "/config/v1/network-slice/"
+	networkSliceHttpend = httpProtocol + ip + ":" + subProvisionEndpt.Port + "/config/v1/network-slice/"
 	log.Println("network slice http endpoint ", devGroupHttpend)
-	subscriberHttpend = "http://" + ip + ":" + subProvisionEndpt.Port + "/api/subscriber/imsi-"
+	subscriberHttpend = httpProtocol + ip + ":" + subProvisionEndpt.Port + "/api/subscriber/imsi-"
 	log.Println("subscriber http endpoint ", subscriberHttpend)
 	baseDestUrl := subscriberHttpend
 	if subProxyEndpt.Port != "" {
 		ip := strings.TrimSpace(subProxyEndpt.Addr)
-		devGroupHttpend = "http://" + ip + ":" + subProxyEndpt.Port + "/config/v1/device-group/"
+		devGroupHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/config/v1/device-group/"
 		log.Println("device trigger Proxy http endpoint ", devGroupHttpend)
-		networkSliceHttpend = "http://" + ip + ":" + subProxyEndpt.Port + "/config/v1/network-slice/"
+		networkSliceHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/config/v1/network-slice/"
 		log.Println("network slice Proxy http endpoint ", devGroupHttpend)
-		subscriberHttpend = "http://" + ip + ":" + subProxyEndpt.Port + "/api/subscriber/imsi-"
+		subscriberHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/api/subscriber/imsi-"
 		log.Println("subscriber Proxy http endpoint ", subscriberHttpend)
 	}
 
@@ -392,7 +397,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				log.Printf("Post Message [%v] to %v", msg.String(), httpend)
 				req, err := http.NewRequest(http.MethodPost, httpend, msg.msgPtr)
 				if err != nil {
-					fmt.Printf("An Error Occured %v", err)
+					fmt.Printf("An Error Occurred %v", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -411,9 +416,9 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				log.Printf("Put Message [%v] to %v", msg.String(), httpend)
 
 				req, err := http.NewRequest(http.MethodPut, httpend, msg.msgPtr)
-				//Handle Error
+				// Handle Error
 				if err != nil {
-					fmt.Printf("An Error Occured %v", err)
+					fmt.Printf("An Error Occurred %v", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -432,9 +437,9 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				log.Printf("Delete Message [%v] to %v", msg.String(), httpend)
 
 				req, err := http.NewRequest(http.MethodDelete, httpend, msg.msgPtr)
-				//Handle Error
+				// Handle Error
 				if err != nil {
-					fmt.Printf("An Error Occured %v", err)
+					fmt.Printf("An Error Occurred %v", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -456,7 +461,6 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 }
 
 func compareSubscriber(subscriberNew *Subscriber, subscriberOld *Subscriber) bool {
-
 	if subscriberNew.PlmnId != subscriberOld.PlmnId {
 		log.Println("Plmn ID changed.")
 		return true
@@ -546,7 +550,7 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 }
 
 func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
-	//slice Id should not change
+	// slice Id should not change
 	appFilteringRulesNew := sliceNew.ApplicationFilteringRules
 	appFilteringRulesOld := sliceOld.ApplicationFilteringRules
 	if reflect.DeepEqual(appFilteringRulesNew, appFilteringRulesOld) == false {
@@ -610,10 +614,10 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 }
 
 func UpdateConfig(f string) error {
-	if content, err := ioutil.ReadFile(f); err != nil {
+	if content, err := os.ReadFile(f); err != nil {
 		return err
 	} else {
-		var NewSimappConfig = Config{}
+		NewSimappConfig := Config{}
 
 		if yamlErr := yaml.Unmarshal(content, &NewSimappConfig); yamlErr != nil {
 			return yamlErr
@@ -691,7 +695,7 @@ func UpdateConfig(f string) error {
 				configMsgChan <- msg
 			}
 		}
-		//delete all the exsiting subscribers not show up in new config.
+		// delete all the existing subscribers not show up in new config.
 		for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
 			subscribers := SimappConfig.Configuration.Subscriber[o]
 			start, err := strconv.Atoi(subscribers.UeIdStart)
@@ -729,7 +733,7 @@ func UpdateConfig(f string) error {
 			}
 		}
 		SimappConfig.Configuration.Subscriber = NewSimappConfig.Configuration.Subscriber
-		//end process subscriber update
+		// end process subscriber update
 
 		for _, group := range SimappConfig.Configuration.DevGroup {
 			group.visited = false
@@ -917,7 +921,6 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int)
 	msg.name = group.Name
 	msg.msgOp = msgOp
 	configMsgChan <- msg
-
 }
 
 func dispatchAllGroups(configMsgChan chan configMessage) {
@@ -962,7 +965,6 @@ func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice,
 	msg.name = slice.Name
 	msg.msgOp = msgOp
 	configMsgChan <- msg
-
 }
 
 func dispatchAllNetworkSlices(configMsgChan chan configMessage) {
