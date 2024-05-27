@@ -278,7 +278,10 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 }
 
 func syncConfig(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "OK\n")
+	_, err := fmt.Fprintf(w, "OK\n")
+	if err != nil {
+		log.Println(err)
+	}
 	dispatchAllGroups(configMsgChan)
 	dispatchAllNetworkSlices(configMsgChan)
 }
