@@ -17,7 +17,7 @@ WORKDIR $GOPATH/src/simapp
 COPY . .
 RUN make all
 
-FROM alpine:3.19 AS simapp
+FROM alpine:3.20 AS simapp
 
 LABEL description="Aether open source 5G Core Network" \
     version="Stage 3"
