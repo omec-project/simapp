@@ -1,4 +1,4 @@
-module simapp
+module github.com/omec-project/simapp
 
 go 1.21
 
