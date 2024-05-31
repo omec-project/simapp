@@ -24,16 +24,16 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/omec-project/logger_util"
+	"github.com/omec-project/util/logger"
 	"github.com/spf13/viper"
 	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
-	Info          *Info               `yaml:"info"`
-	Configuration *Configuration      `yaml:"configuration"`
-	Logger        *logger_util.Logger `yaml:"logger"`
+	Info          *Info          `yaml:"info"`
+	Configuration *Configuration `yaml:"configuration"`
+	Logger        *logger.Logger `yaml:"logger"`
 }
 
 type Info struct {
