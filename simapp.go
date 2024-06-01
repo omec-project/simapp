@@ -416,7 +416,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				log.Printf("Post Message [%v] to %v", msg.String(), httpend)
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, httpend, msg.msgPtr)
 				if err != nil {
-					fmt.Printf("An Error Occurred %v", err)
+					log.Printf("An Error Occurred %v", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -430,14 +430,14 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 					log.Printf("Post Message [%v] returned error [%v] ", httpend, httpErr.Error())
 				}
 
-				fmt.Printf("Message POST %v Success\n", rsp.StatusCode)
+				log.Printf("Message POST %v Success\n", rsp.StatusCode)
 			} else if msg.msgOp == modify_op {
 				log.Printf("Put Message [%v] to %v", msg.String(), httpend)
 
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, httpend, msg.msgPtr)
 				// Handle Error
 				if err != nil {
-					fmt.Printf("An Error Occurred %v", err)
+					log.Printf("An Error Occurred %v", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -451,14 +451,14 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 					log.Printf("Put Message [%v] returned error [%v] ", httpend, httpErr.Error())
 				}
 
-				fmt.Printf("Message PUT %v Success\n", rsp.StatusCode)
+				log.Printf("Message PUT %v Success\n", rsp.StatusCode)
 			} else if msg.msgOp == delete_op {
 				log.Printf("Delete Message [%v] to %v", msg.String(), httpend)
 
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodDelete, httpend, msg.msgPtr)
 				// Handle Error
 				if err != nil {
-					fmt.Printf("An Error Occurred %v", err)
+					log.Printf("An Error Occurred %v", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -471,7 +471,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				if httpErr != nil {
 					log.Printf("Delete Message [%v] returned error [%v] ", httpend, httpErr.Error())
 				}
-				fmt.Printf("Message DEL %v Success\n", rsp.StatusCode)
+				log.Printf("Message DEL %v Success\n", rsp.StatusCode)
 			}
 			err := rsp.Body.Close()
 			if err != nil {
@@ -954,13 +954,13 @@ func dispatchAllGroups(configMsgChan chan configMessage) {
 
 func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice, msgOp int) {
 	log.Println("  Slice Name : ", slice.Name)
-	fmt.Printf("  Slice sst %v, sd %v", slice.SliceId.Sst, slice.SliceId.Sd)
+	log.Printf("  Slice sst %v, sd %v", slice.SliceId.Sst, slice.SliceId.Sd)
 	log.Println("  Slice site info ", slice.SiteInfo)
 	site := slice.SiteInfo
 	log.Println("  Slice site name ", site.SiteName)
 	log.Println("  Slice gNB ", len(site.Gnb))
 	for e := 0; e < len(site.Gnb); e++ {
-		fmt.Printf("  Slice gNB[%v] = %v  \n", e, site.Gnb[e])
+		log.Printf("  Slice gNB[%v] = %v  \n", e, site.Gnb[e])
 	}
 	log.Println("  Slice Plmn ", site.Plmn)
 	log.Println("  Slice Upf ", site.Upf)
