@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -24,8 +23,10 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/omec-project/util/logger"
+	"github.com/omec-project/simapp/logger"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v2"
 )
@@ -33,7 +34,15 @@ import (
 type Config struct {
 	Info          *Info          `yaml:"info"`
 	Configuration *Configuration `yaml:"configuration"`
-	Logger        *logger.Logger `yaml:"logger"`
+	Logger        *Logger        `yaml:"logger"`
+}
+
+type Logger struct {
+	APP *LogSetting `yaml:"APP" valid:"optional"`
+}
+
+type LogSetting struct {
+	DebugLevel string `yaml:"debugLevel" valid:"debugLevel"`
 }
 
 type Info struct {
@@ -71,8 +80,8 @@ type IpDomain struct {
 
 type Subscriber struct {
 	UeId           string
-	UeIdStart      string `yaml:"ueId-start,omitempty" json:"-",omitempty`
-	UeIdEnd        string `yaml:"ueId-end,omitempty" json:"-", omitempty`
+	UeIdStart      string `yaml:"ueId-start,omitempty" json:"-"`
+	UeIdEnd        string `yaml:"ueId-end,omitempty" json:"-"`
 	PlmnId         string `yaml:"plmnId,omitempty" json:"plmnId,omitempty"`
 	OPc            string `yaml:"opc,omitempty" json:"opc,omitempty"`
 	OP             string `yaml:"op,omitempty" json:"op,omitempty"`
@@ -209,7 +218,7 @@ func (msg configMessage) String() string {
 	case subscriber:
 		msgType = "subscriber"
 	}
-	return fmt.Sprintf("Config msg name [%v], type [%v], op [%v]", msg.name, msgType, msgOp)
+	return fmt.Sprintf("config msg name [%v], type [%v], op [%v]", msg.name, msgType, msgOp)
 }
 
 var (
@@ -219,20 +228,36 @@ var (
 )
 
 func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionEndpt *SubProvisionEndpt, subProxyEndpt *SubProxyEndpt) error {
-	log.Println("Function called ", f)
+	logger.SimappLog.Infoln("function called", f)
 	if content, err := os.ReadFile(f); err != nil {
-		log.Println("Readfile failed called ", err)
+		logger.SimappLog.Infoln("readfile failed called", err)
 		return err
 	} else {
 		SimappConfig = Config{}
 
 		if yamlErr := yaml.Unmarshal(content, &SimappConfig); yamlErr != nil {
-			log.Println("yaml parsing failed ", yamlErr)
+			logger.SimappLog.Errorln("yaml parsing failed", yamlErr)
 			return yamlErr
 		}
 	}
+
+	if SimappConfig.Logger.APP != nil {
+		if SimappConfig.Logger.APP.DebugLevel != "" {
+			if level, err := zapcore.ParseLevel(SimappConfig.Logger.APP.DebugLevel); err != nil {
+				logger.SimappLog.Warnf("Simapp log level [%s] is invalid, set to [info] level",
+					SimappConfig.Logger.APP.DebugLevel)
+				logger.SetLogLevel(zap.InfoLevel)
+			} else {
+				logger.SetLogLevel(level)
+			}
+		} else {
+			logger.SimappLog.Warnln("Simapp log level not set. Default set to [info] level")
+			logger.SetLogLevel(zap.InfoLevel)
+		}
+	}
+
 	if SimappConfig.Configuration == nil {
-		log.Println("Configuration Parsing Failed ", SimappConfig.Configuration)
+		logger.SimappLog.Infoln("configuration parsing failed", SimappConfig.Configuration)
 		return nil
 	}
 
@@ -253,16 +278,12 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 		}
 	}
 
-	log.Println("Subscriber Provision Endpoint:")
-	log.Println("Address ", SimappConfig.Configuration.SubProvisionEndpt.Addr)
-	log.Println("Port ", SimappConfig.Configuration.SubProvisionEndpt.Port)
+	logger.SimappLog.Infof("subscriber provision endpoint: %s:%s", SimappConfig.Configuration.SubProvisionEndpt.Addr, SimappConfig.Configuration.SubProvisionEndpt.Port)
 	subProvisionEndpt.Addr = SimappConfig.Configuration.SubProvisionEndpt.Addr
 	subProvisionEndpt.Port = SimappConfig.Configuration.SubProvisionEndpt.Port
 
 	if SimappConfig.Configuration.SubProxyEndpt != nil && SimappConfig.Configuration.SubProxyEndpt.Addr != "" {
-		log.Println("Subscriber Proxy Endpoint:")
-		log.Println("Address ", SimappConfig.Configuration.SubProxyEndpt.Addr)
-		log.Println("Port ", SimappConfig.Configuration.SubProxyEndpt.Port)
+		logger.SimappLog.Infof("subscriber proxy endpoint: %s:%s", SimappConfig.Configuration.SubProxyEndpt.Addr, SimappConfig.Configuration.SubProxyEndpt.Port)
 		subProxyEndpt.Addr = SimappConfig.Configuration.SubProxyEndpt.Addr
 		subProxyEndpt.Port = SimappConfig.Configuration.SubProxyEndpt.Port
 	}
@@ -280,21 +301,21 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 func syncConfig(w http.ResponseWriter, req *http.Request) {
 	_, err := fmt.Fprintf(w, "OK\n")
 	if err != nil {
-		log.Println(err)
+		logger.SimappLog.Errorln(err)
 	}
 	dispatchAllGroups(configMsgChan)
 	dispatchAllNetworkSlices(configMsgChan)
 }
 
 func main() {
-	log.Println("SimApp started")
+	logger.SimappLog.Infoln("simApp started")
 	configMsgChan = make(chan configMessage, 100)
 	var subProvisionEndpt SubProvisionEndpt
 	var subProxyEndpt SubProxyEndpt
 
 	err := InitConfigFactory("./config/simapp.yaml", configMsgChan, &subProvisionEndpt, &subProxyEndpt)
 	if err != nil {
-		log.Println(err)
+		logger.SimappLog.Errorln(err)
 	}
 
 	go sendMessage(configMsgChan, subProvisionEndpt, subProxyEndpt)
@@ -308,7 +329,7 @@ func main() {
 	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
 		// Note: as per the `ListenAndServe` documentation: "ListenAndServe always returns a non-nil error."
-		log.Println(err)
+		logger.SimappLog.Errorln(err)
 	}
 	for {
 		time.Sleep(100 * time.Second)
@@ -331,7 +352,7 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 	var retries uint = 0
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
-		log.Println(err)
+		logger.SimappLog.Errorln(err)
 	}
 	for {
 		cloneReq := req.Clone(context.Background())
@@ -341,7 +362,7 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 		retries += 1
 		if err != nil {
 			nextInterval := getNextBackoffInterval(retries, 2)
-			log.Printf("http req send error [%v], retrying after %v sec...", err.Error(), nextInterval)
+			logger.SimappLog.Errorf("http req send error [%v], retrying after %d sec...", err, nextInterval)
 			time.Sleep(time.Second * time.Duration(nextInterval))
 			continue
 		}
@@ -349,18 +370,18 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 		if rsp.StatusCode == http.StatusAccepted ||
 			rsp.StatusCode == http.StatusOK || rsp.StatusCode == http.StatusNoContent ||
 			rsp.StatusCode == http.StatusCreated {
-			log.Println("config push success")
+			logger.SimappLog.Debugln("config push success")
 			err = req.Body.Close()
 			if err != nil {
-				log.Println(err)
+				logger.SimappLog.Errorln(err)
 			}
 			return rsp, nil
 		} else {
 			nextInterval := getNextBackoffInterval(retries, 2)
-			log.Printf("http rsp error [%v], retrying after [%v] sec...", http.StatusText(rsp.StatusCode), nextInterval)
+			logger.SimappLog.Infof("http rsp error [%v], retrying after %d sec...", http.StatusText(rsp.StatusCode), nextInterval)
 			err = rsp.Body.Close()
 			if err != nil {
-				log.Println(err)
+				logger.SimappLog.Infoln(err)
 			}
 			time.Sleep(time.Second * time.Duration(nextInterval))
 		}
@@ -372,34 +393,32 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 	var networkSliceHttpend string
 	var subscriberHttpend string
 
-	log.Println("Subscriber Provision Endpoint in sendMessage:")
-	log.Println("Address ", subProvisionEndpt.Addr)
-	log.Println("Port ", subProvisionEndpt.Port)
+	logger.SimappLog.Infof("subscriber provision endpoint in sendMessage: %s:%s", subProvisionEndpt.Addr, subProvisionEndpt.Port)
 
 	ip := strings.TrimSpace(subProvisionEndpt.Addr)
 
-	log.Println("webui running at ", ip)
+	logger.SimappLog.Infoln("webui running at", ip)
 	devGroupHttpend = httpProtocol + ip + ":" + subProvisionEndpt.Port + "/config/v1/device-group/"
-	log.Println("device trigger  http endpoint ", devGroupHttpend)
+	logger.SimappLog.Infoln("device trigger http endpoint", devGroupHttpend)
 	networkSliceHttpend = httpProtocol + ip + ":" + subProvisionEndpt.Port + "/config/v1/network-slice/"
-	log.Println("network slice http endpoint ", devGroupHttpend)
+	logger.SimappLog.Infoln("network slice http endpoint", devGroupHttpend)
 	subscriberHttpend = httpProtocol + ip + ":" + subProvisionEndpt.Port + "/api/subscriber/imsi-"
-	log.Println("subscriber http endpoint ", subscriberHttpend)
+	logger.SimappLog.Infoln("subscriber http endpoint", subscriberHttpend)
 	baseDestUrl := subscriberHttpend
 	if subProxyEndpt.Port != "" {
 		ip := strings.TrimSpace(subProxyEndpt.Addr)
 		devGroupHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/config/v1/device-group/"
-		log.Println("device trigger Proxy http endpoint ", devGroupHttpend)
+		logger.SimappLog.Infoln("device trigger Proxy http endpoint", devGroupHttpend)
 		networkSliceHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/config/v1/network-slice/"
-		log.Println("network slice Proxy http endpoint ", devGroupHttpend)
+		logger.SimappLog.Infoln("network slice Proxy http endpoint", devGroupHttpend)
 		subscriberHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/api/subscriber/imsi-"
-		log.Println("subscriber Proxy http endpoint ", subscriberHttpend)
+		logger.SimappLog.Infoln("subscriber Proxy http endpoint", subscriberHttpend)
 	}
 
 	for msg := range msgChan {
 		var httpend string
 		var destUrl string
-		log.Println("Received Message from Channel", msgChan, msg)
+		logger.SimappLog.Debugln("received message from channel", msg)
 		switch msg.msgType {
 		case device_group:
 			httpend = devGroupHttpend + msg.name
@@ -413,10 +432,10 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 		var httpErr error
 		for {
 			if msg.msgOp == add_op {
-				log.Printf("Post Message [%v] to %v", msg.String(), httpend)
+				logger.SimappLog.Infof("post message [%v] to %v", msg.String(), httpend)
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, httpend, msg.msgPtr)
 				if err != nil {
-					log.Printf("An Error Occurred %v", err)
+					logger.SimappLog.Errorf("An Error Occurred %v", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -427,17 +446,17 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 				rsp, httpErr = sendHttpReqMsg(req)
 				if httpErr != nil {
-					log.Printf("Post Message [%v] returned error [%v] ", httpend, httpErr.Error())
+					logger.SimappLog.Errorf("post message [%v] returned error [%v]", httpend, httpErr.Error())
 				}
 
-				log.Printf("Message POST %v Success\n", rsp.StatusCode)
+				logger.SimappLog.Infof("message POST %v success", rsp.StatusCode)
 			} else if msg.msgOp == modify_op {
-				log.Printf("Put Message [%v] to %v", msg.String(), httpend)
+				logger.SimappLog.Infof("put message [%v] to %v", msg.String(), httpend)
 
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, httpend, msg.msgPtr)
 				// Handle Error
 				if err != nil {
-					log.Printf("An Error Occurred %v", err)
+					logger.SimappLog.Errorf("an error occurred %v", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -448,17 +467,17 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 				rsp, httpErr = sendHttpReqMsg(req)
 				if httpErr != nil {
-					log.Printf("Put Message [%v] returned error [%v] ", httpend, httpErr.Error())
+					logger.SimappLog.Errorf("put message [%v] returned error [%v]", httpend, httpErr.Error())
 				}
 
-				log.Printf("Message PUT %v Success\n", rsp.StatusCode)
+				logger.SimappLog.Infof("message PUT %v success", rsp.StatusCode)
 			} else if msg.msgOp == delete_op {
-				log.Printf("Delete Message [%v] to %v", msg.String(), httpend)
+				logger.SimappLog.Infof("delete message [%v] to %v", msg.String(), httpend)
 
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodDelete, httpend, msg.msgPtr)
 				// Handle Error
 				if err != nil {
-					log.Printf("An Error Occurred %v", err)
+					logger.SimappLog.Errorf("an error occurred %v", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -469,13 +488,13 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				}
 				rsp, httpErr = sendHttpReqMsg(req)
 				if httpErr != nil {
-					log.Printf("Delete Message [%v] returned error [%v] ", httpend, httpErr.Error())
+					logger.SimappLog.Errorf("delete message [%v] returned error [%v]", httpend, httpErr.Error())
 				}
-				log.Printf("Message DEL %v Success\n", rsp.StatusCode)
+				logger.SimappLog.Infof("message DEL %v success", rsp.StatusCode)
 			}
 			err := rsp.Body.Close()
 			if err != nil {
-				log.Println(err)
+				logger.SimappLog.Errorln(err)
 			}
 			break
 		}
@@ -484,23 +503,23 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 
 func compareSubscriber(subscriberNew *Subscriber, subscriberOld *Subscriber) bool {
 	if subscriberNew.PlmnId != subscriberOld.PlmnId {
-		log.Println("Plmn ID changed.")
+		logger.SimappLog.Infoln("plmn ID changed")
 		return true
 	}
 	if subscriberNew.OPc != subscriberOld.OPc {
-		log.Println("OPc changed.")
+		logger.SimappLog.Infoln("OPc changed")
 		return true
 	}
 	if subscriberNew.OP != subscriberOld.OP {
-		log.Println("OP changed.")
+		logger.SimappLog.Infoln("OP changed")
 		return true
 	}
 	if subscriberNew.Key != subscriberOld.Key {
-		log.Println("Key changed.")
+		logger.SimappLog.Infoln("Key changed")
 		return true
 	}
 	if subscriberNew.SequenceNumber != subscriberOld.SequenceNumber {
-		log.Println("SequenceNumber changed.")
+		logger.SimappLog.Infoln("SequenceNumber changed")
 		return true
 	}
 	return false
@@ -508,17 +527,17 @@ func compareSubscriber(subscriberNew *Subscriber, subscriberOld *Subscriber) boo
 
 func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 	if groupNew.IpDomainName != groupOld.IpDomainName {
-		log.Println("IP domain name changed.")
+		logger.SimappLog.Infoln("ip domain name changed")
 		return true
 	}
 
 	if groupNew.SiteInfo != groupOld.SiteInfo {
-		log.Println("SIteInfo name changed.")
+		logger.SimappLog.Infoln("siteInfo name changed")
 		return true
 	}
 
 	if len(groupNew.Imsis) != len(groupOld.Imsis) {
-		log.Println("number of Imsis changed.")
+		logger.SimappLog.Infoln("number of Imsis changed")
 		return true
 	}
 	var allimsiNew string
@@ -539,7 +558,7 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 	bs2 := h2.Sum(nil)
 	strcode2 := hex.EncodeToString(bs2[:])
 
-	log.Println("CODE1 and CODE2 ", strcode1, strcode2)
+	logger.SimappLog.Infof("CODE1: %s and CODE2: %s", strcode1, strcode2)
 	if strcode2 != strcode1 {
 		return true
 	}
@@ -587,7 +606,7 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 			}
 		}
 		if !found {
-			log.Println("new Dev Group added in slice ")
+			logger.SimappLog.Infoln("new dev group added in slice")
 			return true // 2 network slices have some difference
 		}
 	}
@@ -600,20 +619,20 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 			}
 		}
 		if !found {
-			log.Println("Dev Group Deleted in slice ")
+			logger.SimappLog.Infoln("dev group deleted in slice")
 			return true // 2 network slices have some difference
 		}
 	}
 	oldSite := sliceOld.SiteInfo
 	newSite := sliceNew.SiteInfo
 	if oldSite.SiteName != newSite.SiteName {
-		log.Println("site name changed ")
+		logger.SimappLog.Infoln("site name changed")
 		return true
 	}
 	oldUpf := oldSite.Upf
 	newUpf := newSite.Upf
 	if (oldUpf.UpfName != newUpf.UpfName) && (oldUpf.UpfPort != newUpf.UpfPort) {
-		log.Println("Upf details changed")
+		logger.SimappLog.Infoln("upf details changed")
 		return true
 	}
 
@@ -626,12 +645,12 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 			}
 		}
 		if !found {
-			log.Println("gnb changed in slice ")
+			logger.SimappLog.Infoln("gnb changed in slice")
 			return true // change in slice details
 		}
 	}
 
-	log.Println("No change in slices ")
+	logger.SimappLog.Warnln("no change in slices")
 	return false
 }
 
@@ -645,31 +664,31 @@ func UpdateConfig(f string) error {
 			return yamlErr
 		}
 		if NewSimappConfig.Configuration == nil {
-			log.Println("Configuration Parsing Failed ", NewSimappConfig.Configuration)
+			logger.SimappLog.Infoln("configuration parsing failed", NewSimappConfig.Configuration)
 			return nil
 		}
 
-		log.Println("Number of subscriber ranges in updated config", len(SimappConfig.Configuration.Subscriber))
+		logger.SimappLog.Infoln("number of subscriber ranges in updated config", len(SimappConfig.Configuration.Subscriber))
 		var newImsiList []uint64
 		for o := 0; o < len(NewSimappConfig.Configuration.Subscriber); o++ {
 			newSubscribers := NewSimappConfig.Configuration.Subscriber[o]
-			log.Println("Subscribers:")
-			log.Println("    UeIdStart", newSubscribers.UeIdStart)
-			log.Println("    UeIdEnd", newSubscribers.UeIdEnd)
-			log.Println("    PlmnId", newSubscribers.PlmnId)
-			log.Println("    OPc", newSubscribers.OPc)
-			log.Println("    OP", newSubscribers.OP)
-			log.Println("    Key", newSubscribers.Key)
-			log.Println("    SequenceNumber", newSubscribers.SequenceNumber)
+			logger.SimappLog.Infoln("Subscribers:")
+			logger.SimappLog.Infoln("    UeIdStart", newSubscribers.UeIdStart)
+			logger.SimappLog.Infoln("    UeIdEnd", newSubscribers.UeIdEnd)
+			logger.SimappLog.Infoln("    PlmnId", newSubscribers.PlmnId)
+			logger.SimappLog.Infoln("    OPc", newSubscribers.OPc)
+			logger.SimappLog.Infoln("    OP", newSubscribers.OP)
+			logger.SimappLog.Infoln("    Key", newSubscribers.Key)
+			logger.SimappLog.Infoln("    SequenceNumber", newSubscribers.SequenceNumber)
 
 			newStart, err := strconv.Atoi(newSubscribers.UeIdStart)
 			if err != nil {
-				log.Println("error in Atoi with UeIdStart", err)
+				logger.SimappLog.Errorln("error in Atoi with UeIdStart", err)
 				continue
 			}
 			newEnd, err := strconv.Atoi(newSubscribers.UeIdEnd)
 			if err != nil {
-				log.Println("error in Atoi with UeIdEnd", err)
+				logger.SimappLog.Errorln("error in Atoi with UeIdEnd", err)
 				continue
 			}
 			for i := newStart; i <= newEnd; i++ {
@@ -679,19 +698,19 @@ func UpdateConfig(f string) error {
 					subscribers := SimappConfig.Configuration.Subscriber[s]
 					start, err := strconv.Atoi(subscribers.UeIdStart)
 					if err != nil {
-						log.Println("error in Atoi with UeIdStart", err)
+						logger.SimappLog.Errorln("error in Atoi with UeIdStart", err)
 						continue
 					}
 					end, err := strconv.Atoi(subscribers.UeIdEnd)
 					if err != nil {
-						log.Println("error in Atoi with UeIdEnd", err)
+						logger.SimappLog.Errorln("error in Atoi with UeIdEnd", err)
 						continue
 					}
 					for j := start; j <= end; j++ {
 						if i == j { // two subcribers' imsi are same
 							found = true
 							if compareSubscriber(newSubscribers, subscribers) {
-								log.Println("WARNING: subscriber provision not support modify yet!")
+								logger.SimappLog.Warnln("subscriber provision not support modify yet")
 							}
 							break
 						}
@@ -705,7 +724,7 @@ func UpdateConfig(f string) error {
 
 				b, err := json.Marshal(newSubscribers)
 				if err != nil {
-					log.Println("error in marshal with newSubscriber", err)
+					logger.SimappLog.Errorln("error in marshal with newSubscriber", err)
 					continue
 				}
 				reqMsgBody := bytes.NewBuffer(b)
@@ -722,12 +741,12 @@ func UpdateConfig(f string) error {
 			subscribers := SimappConfig.Configuration.Subscriber[o]
 			start, err := strconv.Atoi(subscribers.UeIdStart)
 			if err != nil {
-				log.Println("error in Atoi with UeIdStart", err)
+				logger.SimappLog.Errorln("error in Atoi with UeIdStart", err)
 				continue
 			}
 			end, err := strconv.Atoi(subscribers.UeIdEnd)
 			if err != nil {
-				log.Println("error in Atoi with UeIdEnd", err)
+				logger.SimappLog.Errorln("error in Atoi with UeIdEnd", err)
 				continue
 			}
 			for k := start; k <= end; k++ {
@@ -738,10 +757,10 @@ func UpdateConfig(f string) error {
 					}
 				}
 				if !has {
-					log.Println("going to delete subscriber: ", k)
+					logger.SimappLog.Infoln("going to delete subscriber:", k)
 					b, err := json.Marshal("")
 					if err != nil {
-						log.Println("error in marshal with subscriber", err)
+						logger.SimappLog.Infoln("error in marshal with subscriber", err)
 						continue
 					}
 					reqMsgBody := bytes.NewBuffer(b)
@@ -767,7 +786,7 @@ func UpdateConfig(f string) error {
 					configChange := compareGroup(groupNew, groupOld)
 					if configChange {
 						// send Group Put
-						log.Println("Updated group config ", groupNew.Name)
+						logger.SimappLog.Infoln("updated group config", groupNew.Name)
 						dispatchGroup(configMsgChan, groupNew, modify_op)
 						// find all slices which are using this device group and mark them modified
 						for _, slice := range SimappConfig.Configuration.NetworkSlice {
@@ -779,7 +798,7 @@ func UpdateConfig(f string) error {
 							}
 						}
 					} else {
-						log.Println("Config not updated for group ", groupNew.Name)
+						logger.SimappLog.Infoln("config not updated for group", groupNew.Name)
 					}
 					found = true
 					groupOld.visited = true
@@ -788,14 +807,14 @@ func UpdateConfig(f string) error {
 			}
 			if !found {
 				// new Group - Send Post
-				log.Println("New group config ", groupNew.Name)
+				logger.SimappLog.Infoln("new group config", groupNew.Name)
 				dispatchGroup(configMsgChan, groupNew, add_op)
 			}
 		}
 		// visit all groups see if slice is deleted...if found = false
 		for _, group := range SimappConfig.Configuration.DevGroup {
 			if !group.visited {
-				log.Println("Group deleted ", group.Name)
+				logger.SimappLog.Infoln("group deleted", group.Name)
 				dispatchGroup(configMsgChan, group, delete_op)
 				// find all slices which are using this device group and mark them modified
 				for _, slice := range SimappConfig.Configuration.NetworkSlice {
@@ -822,15 +841,15 @@ func UpdateConfig(f string) error {
 				if sliceNew.Name == sliceOld.Name {
 					configChange := compareNetworkSlice(sliceNew, sliceOld)
 					if sliceOld.modified {
-						log.Println("Updated slice config ", sliceNew.Name)
+						logger.SimappLog.Infoln("updated slice config", sliceNew.Name)
 						sliceOld.modified = false
 						dispatchNetworkSlice(configMsgChan, sliceNew, modify_op)
 					} else if configChange {
 						// send Slice Put
-						log.Println("Updated slice config ", sliceNew.Name)
+						logger.SimappLog.Infoln("updated slice config", sliceNew.Name)
 						dispatchNetworkSlice(configMsgChan, sliceNew, modify_op)
 					} else {
-						log.Println("Config not updated for slice ", sliceNew.Name)
+						logger.SimappLog.Infoln("config not updated for slice", sliceNew.Name)
 					}
 					found = true
 					sliceOld.visited = true
@@ -839,14 +858,14 @@ func UpdateConfig(f string) error {
 			}
 			if !found {
 				// new Slice - Send Post
-				log.Println("New slice config ", sliceNew.Name)
+				logger.SimappLog.Infoln("new slice config", sliceNew.Name)
 				dispatchNetworkSlice(configMsgChan, sliceNew, add_op)
 			}
 		}
 		// visit all sliceOld see if slice is deleted...if found = false
 		for _, slice := range SimappConfig.Configuration.NetworkSlice {
 			if !slice.visited {
-				log.Println("Slice deleted ", slice.Name)
+				logger.SimappLog.Infoln("slice deleted", slice.Name)
 				dispatchNetworkSlice(configMsgChan, slice, delete_op)
 			}
 		}
@@ -858,47 +877,37 @@ func UpdateConfig(f string) error {
 func WatchConfig() {
 	viper.WatchConfig()
 	viper.OnConfigChange(func(e fsnotify.Event) {
-		log.Println("****Config file changed:", e.Name)
+		logger.SimappLog.Infoln("****config file changed:", e.Name)
 		if err := UpdateConfig("config/simapp.yaml"); err != nil {
-			log.Println("error in loading updated configuration ", err)
+			logger.SimappLog.Errorln("error in loading updated configuration ", err)
 		} else {
-			log.Println("****Successfully updated configuration****")
+			logger.SimappLog.Infoln("****successfully updated configuration****")
 		}
 	})
-	log.Println("WatchConfig done")
+	logger.SimappLog.Infoln("watchConfig done")
 }
 
 func dispatchAllSubscribers(configMsgChan chan configMessage) {
-	log.Println("Number of subscriber ranges", len(SimappConfig.Configuration.Subscriber))
+	logger.SimappLog.Infoln("number of subscriber ranges", len(SimappConfig.Configuration.Subscriber))
 	for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
 		subscribers := SimappConfig.Configuration.Subscriber[o]
-		log.Println("Subscribers:")
-		log.Println("    UeIdStart", subscribers.UeIdStart)
-		log.Println("    UeIdEnd", subscribers.UeIdEnd)
-		log.Println("    PlmnId", subscribers.PlmnId)
-		log.Println("    OPc", subscribers.OPc)
-		log.Println("    OP", subscribers.OP)
-		log.Println("    Key", subscribers.Key)
-		log.Println("    SequenceNumber", subscribers.SequenceNumber)
-
+		logger.SimappLog.Infof("Subscribers: UeIdStart: %s, UeIdEnd: %s, PlmnId: %s, OPc: %s, OP: %s, Key: %s, SequenceNumber: %s", subscribers.UeIdStart, subscribers.UeIdEnd, subscribers.PlmnId, subscribers.OPc, subscribers.OP, subscribers.Key, subscribers.SequenceNumber)
 		start, err := strconv.Atoi(subscribers.UeIdStart)
 		if err != nil {
-			log.Println("error in Atoi with UeIdStart", err)
+			logger.SimappLog.Errorln("error in Atoi with UeIdStart", err)
 			continue
 		}
 		end, err := strconv.Atoi(subscribers.UeIdEnd)
 		if err != nil {
-			log.Println("error in Atoi with UeIdEnd", err)
+			logger.SimappLog.Errorln("error in Atoi with UeIdEnd", err)
 			continue
 		}
 		for i := start; i <= end; i++ {
 			subscribers.UeId = fmt.Sprintf("%015d", i)
-			log.Println("    UeId", subscribers.UeId)
-			//			subscribers.UeIdStart = ""
-			//			subscribers.UeIdEnd = ""
+			logger.SimappLog.Debugln("UeId", subscribers.UeId)
 			b, err := json.Marshal(subscribers)
 			if err != nil {
-				log.Println("error in marshal with subscribers", err)
+				logger.SimappLog.Errorln("error in marshal with subscribers", err)
 				continue
 			}
 			reqMsgBody := bytes.NewBuffer(b)
@@ -913,28 +922,28 @@ func dispatchAllSubscribers(configMsgChan chan configMessage) {
 }
 
 func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int) {
-	log.Println("Group Name ", group.Name)
-	log.Println("  Site Name ", group.SiteInfo)
-	log.Println("  Imsis ", group.Imsis)
+	logger.SimappLog.Infoln("group name", group.Name)
+	logger.SimappLog.Infoln("  site name", group.SiteInfo)
+	logger.SimappLog.Infoln("  imsis", group.Imsis)
 	for im := 0; im < len(group.Imsis); im++ {
-		log.Println("  IMSI ", group.Imsis[im])
+		logger.SimappLog.Debugln("  IMSI", group.Imsis[im])
 	}
-	log.Println("  IpDomainName ", group.IpDomainName)
+	logger.SimappLog.Infoln("  IpDomainName", group.IpDomainName)
 	ipDomain := group.IpDomain
 	if group.IpDomain != nil {
-		log.Println("  IpDomain Dnn ", ipDomain.Dnn)
-		log.Println("  IpDomain Dns Primary ", ipDomain.DnsPrimary)
-		log.Println("  IpDomain Mtu ", ipDomain.Mtu)
-		log.Println("  IpDomain UePool ", ipDomain.UePool)
+		logger.SimappLog.Infoln("  IpDomain Dnn", ipDomain.Dnn)
+		logger.SimappLog.Infoln("  IpDomain Dns Primary", ipDomain.DnsPrimary)
+		logger.SimappLog.Infoln("  IpDomain Mtu", ipDomain.Mtu)
+		logger.SimappLog.Infoln("  IpDomain UePool", ipDomain.UePool)
 	}
 	b, err := json.Marshal(group)
 	if err != nil {
-		log.Println("error in marshal ", err)
+		logger.SimappLog.Errorln("error in marshal", err)
 		return
 	}
 	reqMsgBody := bytes.NewBuffer(b)
 	if !SimappConfig.Configuration.ConfigSlice {
-		log.Println("Don't configure network slice ")
+		logger.SimappLog.Warnln("do not configure network slice")
 		return
 	}
 	var msg configMessage
@@ -946,39 +955,39 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int)
 }
 
 func dispatchAllGroups(configMsgChan chan configMessage) {
-	log.Println("Number of device Groups ", len(SimappConfig.Configuration.DevGroup))
+	logger.SimappLog.Infoln("number of device groups", len(SimappConfig.Configuration.DevGroup))
 	for _, group := range SimappConfig.Configuration.DevGroup {
 		dispatchGroup(configMsgChan, group, add_op)
 	}
 }
 
 func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice, msgOp int) {
-	log.Println("  Slice Name : ", slice.Name)
-	log.Printf("  Slice sst %v, sd %v", slice.SliceId.Sst, slice.SliceId.Sd)
-	log.Println("  Slice site info ", slice.SiteInfo)
+	logger.SimappLog.Infoln("  Slice Name:", slice.Name)
+	logger.SimappLog.Infof("  Slice sst %v, sd %v", slice.SliceId.Sst, slice.SliceId.Sd)
+	logger.SimappLog.Infoln("  Slice site info", slice.SiteInfo)
 	site := slice.SiteInfo
-	log.Println("  Slice site name ", site.SiteName)
-	log.Println("  Slice gNB ", len(site.Gnb))
+	logger.SimappLog.Infoln("  Slice site name", site.SiteName)
+	logger.SimappLog.Infoln("  Slice gNB", len(site.Gnb))
 	for e := 0; e < len(site.Gnb); e++ {
-		log.Printf("  Slice gNB[%v] = %v  \n", e, site.Gnb[e])
+		logger.SimappLog.Infof("  Slice gNB[%v] = %s, tac: %d", e, site.Gnb[e].Name, site.Gnb[e].Tac)
 	}
-	log.Println("  Slice Plmn ", site.Plmn)
-	log.Println("  Slice Upf ", site.Upf)
+	logger.SimappLog.Infoln("  Slice Plmn", site.Plmn)
+	logger.SimappLog.Infoln("  Slice Upf", site.Upf)
 
-	log.Println("  Slice Device Groups ", slice.DevGroups)
+	logger.SimappLog.Infoln("  Slice Device Groups", slice.DevGroups)
 	for im := 0; im < len(slice.DevGroups); im++ {
-		log.Println("  Attached Device Groups  ", slice.DevGroups[im])
+		logger.SimappLog.Infoln("  Attached Device Groups", slice.DevGroups[im])
 	}
 
 	b, err := json.Marshal(slice)
 	if err != nil {
-		log.Println("error in marshal ", err)
+		logger.SimappLog.Errorln("error in marshal", err)
 		return
 	}
 	reqMsgBody := bytes.NewBuffer(b)
 
 	if !SimappConfig.Configuration.ConfigSlice {
-		log.Println("Don't configure network slice ")
+		logger.SimappLog.Warnln("Do not configure network slice")
 		return
 	}
 	var msg configMessage
@@ -990,7 +999,7 @@ func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice,
 }
 
 func dispatchAllNetworkSlices(configMsgChan chan configMessage) {
-	log.Println("Number of network Slices ", len(SimappConfig.Configuration.NetworkSlice))
+	logger.SimappLog.Infoln("number of network slices", len(SimappConfig.Configuration.NetworkSlice))
 	for _, slice := range SimappConfig.Configuration.NetworkSlice {
 		dispatchNetworkSlice(configMsgChan, slice, add_op)
 	}
