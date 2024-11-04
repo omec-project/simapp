@@ -3,7 +3,7 @@ module github.com/omec-project/simapp
 go 1.21
 
 require (
-	github.com/fsnotify/fsnotify v1.7.0
+	github.com/fsnotify/fsnotify v1.8.0
 	github.com/spf13/viper v1.19.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/net v0.30.0
