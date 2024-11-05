@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/omec-project/simapp/logger"
 	"github.com/spf13/viper"
+	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/net/http2"
@@ -288,9 +290,8 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 		subProxyEndpt.Port = SimappConfig.Configuration.SubProxyEndpt.Port
 	}
 
-	viper.SetConfigName("simapp.yaml")
+	viper.SetConfigFile(f)
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("/simapp/config")
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {             // Handle errors reading the config file
 		return err
@@ -308,12 +309,38 @@ func syncConfig(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	logger.SimappLog.Infoln("simApp started")
+	app := cli.NewApp()
+	app.Name = "sctplb"
+	logger.SimappLog.Infoln(app.Name)
+	app.Usage = "SIMApp"
+	app.UsageText = "simapp -cfg <simapp_config_file.yaml>"
+	app.Flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:     "cfg",
+			Usage:    "simapp config file",
+			Required: true,
+		},
+	}
+	app.Action = action
+	if err := app.Run(os.Args); err != nil {
+		logger.SimappLog.Fatalf("SIMApp run error: %v", err)
+	}
+}
+
+func action(c *cli.Context) error {
+	logger.SimappLog.Infoln("SIMApp started")
 	configMsgChan = make(chan configMessage, 100)
 	var subProvisionEndpt SubProvisionEndpt
 	var subProxyEndpt SubProxyEndpt
 
-	err := InitConfigFactory("./config/simapp.yaml", configMsgChan, &subProvisionEndpt, &subProxyEndpt)
+	cfg := c.String("cfg")
+	absPath, err := filepath.Abs(cfg)
+	if err != nil {
+		logger.SimappLog.Errorln(err)
+		return err
+	}
+
+	err = InitConfigFactory(absPath, configMsgChan, &subProvisionEndpt, &subProxyEndpt)
 	if err != nil {
 		logger.SimappLog.Errorln(err)
 	}
