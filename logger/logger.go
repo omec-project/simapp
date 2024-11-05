@@ -41,7 +41,7 @@ func init() {
 		panic(err)
 	}
 
-	SimappLog = log.Sugar()
+	SimappLog = log.Sugar().With("component", "SIMApp", "category", "App")
 }
 
 func GetLogger() *zap.Logger {

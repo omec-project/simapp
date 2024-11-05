@@ -389,7 +389,7 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 		retries += 1
 		if err != nil {
 			nextInterval := getNextBackoffInterval(retries, 2)
-			logger.SimappLog.Errorf("http req send error [%v], retrying after %d sec...", err, nextInterval)
+			logger.SimappLog.Errorf("http req send error [%v], retrying after %d sec", err, nextInterval)
 			time.Sleep(time.Second * time.Duration(nextInterval))
 			continue
 		}
@@ -405,7 +405,7 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 			return rsp, nil
 		} else {
 			nextInterval := getNextBackoffInterval(retries, 2)
-			logger.SimappLog.Infof("http rsp error [%v], retrying after %d sec...", http.StatusText(rsp.StatusCode), nextInterval)
+			logger.SimappLog.Infof("http rsp error [%v], retrying after %d sec", http.StatusText(rsp.StatusCode), nextInterval)
 			err = rsp.Body.Close()
 			if err != nil {
 				logger.SimappLog.Infoln(err)
@@ -462,7 +462,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				logger.SimappLog.Infof("post message [%v] to %v", msg.String(), httpend)
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, httpend, msg.msgPtr)
 				if err != nil {
-					logger.SimappLog.Errorf("An Error Occurred %v", err)
+					logger.SimappLog.Errorf("an error occurred %v", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -700,13 +700,13 @@ func UpdateConfig(f string) error {
 		for o := 0; o < len(NewSimappConfig.Configuration.Subscriber); o++ {
 			newSubscribers := NewSimappConfig.Configuration.Subscriber[o]
 			logger.SimappLog.Infoln("Subscribers:")
-			logger.SimappLog.Infoln("    UeIdStart", newSubscribers.UeIdStart)
-			logger.SimappLog.Infoln("    UeIdEnd", newSubscribers.UeIdEnd)
-			logger.SimappLog.Infoln("    PlmnId", newSubscribers.PlmnId)
-			logger.SimappLog.Infoln("    OPc", newSubscribers.OPc)
-			logger.SimappLog.Infoln("    OP", newSubscribers.OP)
-			logger.SimappLog.Infoln("    Key", newSubscribers.Key)
-			logger.SimappLog.Infoln("    SequenceNumber", newSubscribers.SequenceNumber)
+			logger.SimappLog.Infoln("UeIdStart", newSubscribers.UeIdStart)
+			logger.SimappLog.Infoln("UeIdEnd", newSubscribers.UeIdEnd)
+			logger.SimappLog.Infoln("PlmnId", newSubscribers.PlmnId)
+			logger.SimappLog.Infoln("OPc", newSubscribers.OPc)
+			logger.SimappLog.Infoln("OP", newSubscribers.OP)
+			logger.SimappLog.Infoln("Key", newSubscribers.Key)
+			logger.SimappLog.Infoln("SequenceNumber", newSubscribers.SequenceNumber)
 
 			newStart, err := strconv.Atoi(newSubscribers.UeIdStart)
 			if err != nil {
@@ -904,11 +904,11 @@ func UpdateConfig(f string) error {
 func WatchConfig() {
 	viper.WatchConfig()
 	viper.OnConfigChange(func(e fsnotify.Event) {
-		logger.SimappLog.Infoln("****config file changed:", e.Name)
+		logger.SimappLog.Infoln("config file changed:", e.Name)
 		if err := UpdateConfig("config/simapp.yaml"); err != nil {
 			logger.SimappLog.Errorln("error in loading updated configuration ", err)
 		} else {
-			logger.SimappLog.Infoln("****successfully updated configuration****")
+			logger.SimappLog.Infoln("successfully updated configuration")
 		}
 	})
 	logger.SimappLog.Infoln("watchConfig done")
@@ -931,7 +931,7 @@ func dispatchAllSubscribers(configMsgChan chan configMessage) {
 		}
 		for i := start; i <= end; i++ {
 			subscribers.UeId = fmt.Sprintf("%015d", i)
-			logger.SimappLog.Debugln("UeId", subscribers.UeId)
+			logger.SimappLog.Debugln("ueId", subscribers.UeId)
 			b, err := json.Marshal(subscribers)
 			if err != nil {
 				logger.SimappLog.Errorln("error in marshal with subscribers", err)
@@ -950,18 +950,18 @@ func dispatchAllSubscribers(configMsgChan chan configMessage) {
 
 func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int) {
 	logger.SimappLog.Infoln("group name", group.Name)
-	logger.SimappLog.Infoln("  site name", group.SiteInfo)
-	logger.SimappLog.Infoln("  imsis", group.Imsis)
+	logger.SimappLog.Infoln("site name", group.SiteInfo)
+	logger.SimappLog.Infoln("imsis", group.Imsis)
 	for im := 0; im < len(group.Imsis); im++ {
-		logger.SimappLog.Debugln("  IMSI", group.Imsis[im])
+		logger.SimappLog.Debugln("imsi", group.Imsis[im])
 	}
-	logger.SimappLog.Infoln("  IpDomainName", group.IpDomainName)
+	logger.SimappLog.Infoln("IpDomainName", group.IpDomainName)
 	ipDomain := group.IpDomain
 	if group.IpDomain != nil {
-		logger.SimappLog.Infoln("  IpDomain Dnn", ipDomain.Dnn)
-		logger.SimappLog.Infoln("  IpDomain Dns Primary", ipDomain.DnsPrimary)
-		logger.SimappLog.Infoln("  IpDomain Mtu", ipDomain.Mtu)
-		logger.SimappLog.Infoln("  IpDomain UePool", ipDomain.UePool)
+		logger.SimappLog.Infoln("IpDomain Dnn", ipDomain.Dnn)
+		logger.SimappLog.Infoln("IpDomain Dns Primary", ipDomain.DnsPrimary)
+		logger.SimappLog.Infoln("IpDomain Mtu", ipDomain.Mtu)
+		logger.SimappLog.Infoln("IpDomain UePool", ipDomain.UePool)
 	}
 	b, err := json.Marshal(group)
 	if err != nil {
@@ -989,21 +989,21 @@ func dispatchAllGroups(configMsgChan chan configMessage) {
 }
 
 func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice, msgOp int) {
-	logger.SimappLog.Infoln("  Slice Name:", slice.Name)
-	logger.SimappLog.Infof("  Slice sst %v, sd %v", slice.SliceId.Sst, slice.SliceId.Sd)
-	logger.SimappLog.Infoln("  Slice site info", slice.SiteInfo)
+	logger.SimappLog.Infoln("slice Name:", slice.Name)
+	logger.SimappLog.Infof("slice sst %v, sd %v", slice.SliceId.Sst, slice.SliceId.Sd)
+	logger.SimappLog.Infoln("slice site info", slice.SiteInfo)
 	site := slice.SiteInfo
-	logger.SimappLog.Infoln("  Slice site name", site.SiteName)
-	logger.SimappLog.Infoln("  Slice gNB", len(site.Gnb))
+	logger.SimappLog.Infoln("slice site name", site.SiteName)
+	logger.SimappLog.Infoln("slice gNB", len(site.Gnb))
 	for e := 0; e < len(site.Gnb); e++ {
-		logger.SimappLog.Infof("  Slice gNB[%v] = %s, tac: %d", e, site.Gnb[e].Name, site.Gnb[e].Tac)
+		logger.SimappLog.Infof("slice gNB[%v] = %s, tac: %d", e, site.Gnb[e].Name, site.Gnb[e].Tac)
 	}
-	logger.SimappLog.Infoln("  Slice Plmn", site.Plmn)
-	logger.SimappLog.Infoln("  Slice Upf", site.Upf)
+	logger.SimappLog.Infoln("slice Plmn", site.Plmn)
+	logger.SimappLog.Infoln("slice Upf", site.Upf)
 
-	logger.SimappLog.Infoln("  Slice Device Groups", slice.DevGroups)
+	logger.SimappLog.Infoln("slice device groups", slice.DevGroups)
 	for im := 0; im < len(slice.DevGroups); im++ {
-		logger.SimappLog.Infoln("  Attached Device Groups", slice.DevGroups[im])
+		logger.SimappLog.Infoln("attached device groups", slice.DevGroups[im])
 	}
 
 	b, err := json.Marshal(slice)
@@ -1014,7 +1014,7 @@ func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice,
 	reqMsgBody := bytes.NewBuffer(b)
 
 	if !SimappConfig.Configuration.ConfigSlice {
-		logger.SimappLog.Warnln("Do not configure network slice")
+		logger.SimappLog.Warnln("do not configure network slice")
 		return
 	}
 	var msg configMessage
