@@ -310,7 +310,7 @@ func syncConfig(w http.ResponseWriter, req *http.Request) {
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "sctplb"
+	app.Name = "simapp"
 	logger.SimappLog.Infoln(app.Name)
 	app.Usage = "SIMApp"
 	app.UsageText = "simapp -cfg <simapp_config_file.yaml>"
