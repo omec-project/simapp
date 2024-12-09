@@ -15,7 +15,7 @@ WORKDIR $GOPATH/src/simapp
 COPY . .
 RUN make all
 
-FROM alpine:3.20 AS simapp
+FROM alpine:3.21 AS simapp
 
 LABEL maintainer="Aether SD-Core <dev@lists.aetherproject.org>" \
     description="Aether open source 5G Core Network" \
