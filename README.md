@@ -24,5 +24,5 @@ from ROC
 
 ## Reach out to us thorugh
 1. #sdcore-dev channel in [ONF Community Slack](https://onf-community.slack.com/)
-2. Extensive SD-Core documentation can be found at [SD-Core Documentation](https://docs.sd-core.opennetworking.org/master/index.html)
+2. Extensive SD-Core documentation can be found at [SD-Core Documentation](https://docs.sd-core.opennetworking.org/main/index.html)
 3. Raise Github issues
