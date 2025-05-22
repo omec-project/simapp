@@ -388,6 +388,16 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 		rsp, err := client.Do(cloneReq)
 		retries += 1
 		if err != nil {
+			if rsp != nil {
+				if rsp.StatusCode == http.StatusConflict {
+					logger.SimappLog.Errorf("http req send error StatusConflict, continue with next")
+					err = req.Body.Close()
+					if err != nil {
+						logger.SimappLog.Errorln(err)
+					}
+					return rsp, nil
+				}
+			}
 			nextInterval := getNextBackoffInterval(retries, 2)
 			logger.SimappLog.Errorf("http req send error [%v], retrying after %d sec", err, nextInterval)
 			time.Sleep(time.Second * time.Duration(nextInterval))
@@ -404,6 +414,14 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 			}
 			return rsp, nil
 		} else {
+			if rsp.StatusCode == http.StatusConflict {
+				logger.SimappLog.Errorf("http req send error StatusConflict, continue with next")
+				err = req.Body.Close()
+				if err != nil {
+					logger.SimappLog.Errorln(err)
+				}
+				return rsp, nil
+			}
 			nextInterval := getNextBackoffInterval(retries, 2)
 			logger.SimappLog.Infof("http rsp error [%v], retrying after %d sec", http.StatusText(rsp.StatusCode), nextInterval)
 			err = rsp.Body.Close()
@@ -915,6 +933,10 @@ func WatchConfig() {
 }
 
 func dispatchAllSubscribers(configMsgChan chan configMessage) {
+	if !SimappConfig.Configuration.ConfigSlice {
+		logger.SimappLog.Warnln("do not configure Subscribers")
+		return
+	}
 	logger.SimappLog.Infoln("number of subscriber ranges", len(SimappConfig.Configuration.Subscriber))
 	for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
 		subscribers := SimappConfig.Configuration.Subscriber[o]
@@ -970,7 +992,7 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int)
 	}
 	reqMsgBody := bytes.NewBuffer(b)
 	if !SimappConfig.Configuration.ConfigSlice {
-		logger.SimappLog.Warnln("do not configure network slice")
+		logger.SimappLog.Warnln("do not configure deviceGroup")
 		return
 	}
 	var msg configMessage
