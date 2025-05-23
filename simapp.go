@@ -54,12 +54,12 @@ type Info struct {
 }
 
 type Configuration struct {
-	ConfigSliceDevGroup       bool               `yaml:"provision-network-slice,omitempty"`
-	DevGroup          []*DevGroup        `yaml:"device-groups,omitempty"`
-	NetworkSlice      []*NetworkSlice    `yaml:"network-slices,omitempty"`
-	Subscriber        []*Subscriber      `yaml:"subscribers,omitempty"`
-	SubProvisionEndpt *SubProvisionEndpt `yaml:"sub-provision-endpt,omitempty"`
-	SubProxyEndpt     *SubProxyEndpt     `yaml:"sub-proxy-endpt,omitempty"`
+	ConfigSliceDevGroup bool               `yaml:"provision-network-slice,omitempty"`
+	DevGroup            []*DevGroup        `yaml:"device-groups,omitempty"`
+	NetworkSlice        []*NetworkSlice    `yaml:"network-slices,omitempty"`
+	Subscriber          []*Subscriber      `yaml:"subscribers,omitempty"`
+	SubProvisionEndpt   *SubProvisionEndpt `yaml:"sub-provision-endpt,omitempty"`
+	SubProxyEndpt       *SubProxyEndpt     `yaml:"sub-proxy-endpt,omitempty"`
 }
 
 type DevGroup struct {
