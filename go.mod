@@ -7,7 +7,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/urfave/cli/v2 v2.27.6
 	go.uber.org/zap v1.27.0
-	golang.org/x/net v0.40.0
+	golang.org/x/net v0.41.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -25,6 +25,6 @@ require (
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
