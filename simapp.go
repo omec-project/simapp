@@ -26,7 +26,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/omec-project/simapp/logger"
 	"github.com/spf13/viper"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/net/http2"
@@ -309,7 +309,7 @@ func syncConfig(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	app := cli.NewApp()
+	app := &cli.Command{}
 	app.Name = "simapp"
 	logger.SimappLog.Infoln(app.Name)
 	app.Usage = "SIMApp"
@@ -322,12 +322,12 @@ func main() {
 		},
 	}
 	app.Action = action
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		logger.SimappLog.Fatalf("SIMApp run error: %v", err)
 	}
 }
 
-func action(c *cli.Context) error {
+func action(ctx context.Context, c *cli.Command) error {
 	logger.SimappLog.Infoln("SIMApp started")
 	configMsgChan = make(chan configMessage, 100)
 	var subProvisionEndpt SubProvisionEndpt
