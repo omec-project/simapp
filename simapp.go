@@ -29,8 +29,8 @@ import (
 	"github.com/urfave/cli/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"go.yaml.in/yaml/v4"
 	"golang.org/x/net/http2"
-	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
