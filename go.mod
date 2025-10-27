@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/spf13/viper v1.21.0
-	github.com/urfave/cli/v3 v3.4.1
+	github.com/urfave/cli/v3 v3.5.0
 	go.uber.org/zap v1.27.0
 	go.yaml.in/yaml/v4 v4.0.0-rc.2
 	golang.org/x/net v0.46.0
