@@ -22,7 +22,7 @@ slices as well
 - In case ROC is running in the deployment then network slices can be configured
 from ROC
 
-## Reach out to us thorugh
+## Reach out to us through
 1. #sdcore-dev channel in [ONF Community Slack](https://onf-community.slack.com/)
 2. Extensive SD-Core documentation can be found at [SD-Core Documentation](https://docs.sd-core.opennetworking.org/main/index.html)
 3. Raise Github issues
