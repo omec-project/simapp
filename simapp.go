@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -423,7 +424,7 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 				return rsp, nil
 			}
 			nextInterval := getNextBackoffInterval(retries, 2)
-			logger.SimappLog.Infof("http rsp error [%v], retrying after %d sec", http.StatusText(rsp.StatusCode), nextInterval)
+			logger.SimappLog.Infof("http rsp error [%s], retrying after %d sec", http.StatusText(rsp.StatusCode), nextInterval)
 			err = rsp.Body.Close()
 			if err != nil {
 				logger.SimappLog.Infoln(err)
@@ -446,7 +447,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 	devGroupHttpend = httpProtocol + ip + ":" + subProvisionEndpt.Port + "/config/v1/device-group/"
 	logger.SimappLog.Infoln("device trigger http endpoint", devGroupHttpend)
 	networkSliceHttpend = httpProtocol + ip + ":" + subProvisionEndpt.Port + "/config/v1/network-slice/"
-	logger.SimappLog.Infoln("network slice http endpoint", devGroupHttpend)
+	logger.SimappLog.Infoln("network slice http endpoint", networkSliceHttpend)
 	subscriberHttpend = httpProtocol + ip + ":" + subProvisionEndpt.Port + "/api/subscriber/imsi-"
 	logger.SimappLog.Infoln("subscriber http endpoint", subscriberHttpend)
 	baseDestUrl := subscriberHttpend
@@ -455,7 +456,7 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 		devGroupHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/config/v1/device-group/"
 		logger.SimappLog.Infoln("device trigger Proxy http endpoint", devGroupHttpend)
 		networkSliceHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/config/v1/network-slice/"
-		logger.SimappLog.Infoln("network slice Proxy http endpoint", devGroupHttpend)
+		logger.SimappLog.Infoln("network slice Proxy http endpoint", networkSliceHttpend)
 		subscriberHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/api/subscriber/imsi-"
 		logger.SimappLog.Infoln("subscriber Proxy http endpoint", subscriberHttpend)
 	}
@@ -643,27 +644,13 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 		return true
 	}
 	for _, ng := range sliceNew.DevGroups {
-		found := false
-		for _, og := range sliceOld.DevGroups {
-			if ng == og {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.Contains(sliceOld.DevGroups, ng) {
 			logger.SimappLog.Infoln("new dev group added in slice")
 			return true // 2 network slices have some difference
 		}
 	}
 	for _, ng := range sliceOld.DevGroups {
-		found := false
-		for _, og := range sliceNew.DevGroups {
-			if ng == og {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.Contains(sliceNew.DevGroups, ng) {
 			logger.SimappLog.Infoln("dev group deleted in slice")
 			return true // 2 network slices have some difference
 		}
@@ -682,14 +669,9 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 	}
 
 	for _, newgnb := range newSite.Gnb {
-		found := false
-		for _, oldgnb := range oldSite.Gnb {
-			if newgnb.Name == oldgnb.Name && newgnb.Tac == oldgnb.Tac {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.ContainsFunc(oldSite.Gnb, func(oldgnb *Gnb) bool {
+			return newgnb.Name == oldgnb.Name && newgnb.Tac == oldgnb.Tac
+		}) {
 			logger.SimappLog.Infoln("gnb changed in slice")
 			return true // change in slice details
 		}
@@ -697,6 +679,25 @@ func compareNetworkSlice(sliceNew *NetworkSlice, sliceOld *NetworkSlice) bool {
 
 	logger.SimappLog.Warnln("no change in slices")
 	return false
+}
+
+func isImsiInSubscribers(imsi int, subscribers []*Subscriber) (bool, *Subscriber) {
+	for _, subscriber := range subscribers {
+		start, err := strconv.Atoi(subscriber.UeIdStart)
+		if err != nil {
+			logger.SimappLog.Errorln("error in Atoi with UeIdStart", err)
+			continue
+		}
+		end, err := strconv.Atoi(subscriber.UeIdEnd)
+		if err != nil {
+			logger.SimappLog.Errorln("error in Atoi with UeIdEnd", err)
+			continue
+		}
+		if imsi >= start && imsi <= end {
+			return true, subscriber
+		}
+	}
+	return false, nil
 }
 
 func UpdateConfig(f string) error {
@@ -715,8 +716,7 @@ func UpdateConfig(f string) error {
 
 		logger.SimappLog.Infoln("number of subscriber ranges in updated config", len(SimappConfig.Configuration.Subscriber))
 		var newImsiList []uint64
-		for o := 0; o < len(NewSimappConfig.Configuration.Subscriber); o++ {
-			newSubscribers := NewSimappConfig.Configuration.Subscriber[o]
+		for _, newSubscribers := range NewSimappConfig.Configuration.Subscriber {
 			logger.SimappLog.Infoln("Subscribers:")
 			logger.SimappLog.Infoln("UeIdStart", newSubscribers.UeIdStart)
 			logger.SimappLog.Infoln("UeIdEnd", newSubscribers.UeIdEnd)
@@ -737,31 +737,13 @@ func UpdateConfig(f string) error {
 				continue
 			}
 			for i := newStart; i <= newEnd; i++ {
-				found := false
 				newImsiList = append(newImsiList, uint64(i))
-				for s := 0; s < len(SimappConfig.Configuration.Subscriber); s++ {
-					subscribers := SimappConfig.Configuration.Subscriber[s]
-					start, err := strconv.Atoi(subscribers.UeIdStart)
-					if err != nil {
-						logger.SimappLog.Errorln("error in Atoi with UeIdStart", err)
-						continue
-					}
-					end, err := strconv.Atoi(subscribers.UeIdEnd)
-					if err != nil {
-						logger.SimappLog.Errorln("error in Atoi with UeIdEnd", err)
-						continue
-					}
-					for j := start; j <= end; j++ {
-						if i == j { // two subcribers' imsi are same
-							found = true
-							if compareSubscriber(newSubscribers, subscribers) {
-								logger.SimappLog.Warnln("subscriber provision not support modify yet")
-							}
-							break
-						}
-					}
-				}
+
+				found, existingSubscriber := isImsiInSubscribers(i, SimappConfig.Configuration.Subscriber)
 				if found {
+					if compareSubscriber(newSubscribers, existingSubscriber) {
+						logger.SimappLog.Warnln("subscriber provision not support modify yet")
+					}
 					continue
 				}
 				// add subscriber to chan
@@ -782,8 +764,7 @@ func UpdateConfig(f string) error {
 			}
 		}
 		// delete all the existing subscribers not show up in new config.
-		for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
-			subscribers := SimappConfig.Configuration.Subscriber[o]
+		for _, subscribers := range SimappConfig.Configuration.Subscriber {
 			start, err := strconv.Atoi(subscribers.UeIdStart)
 			if err != nil {
 				logger.SimappLog.Errorln("error in Atoi with UeIdStart", err)
@@ -795,13 +776,7 @@ func UpdateConfig(f string) error {
 				continue
 			}
 			for k := start; k <= end; k++ {
-				has := false
-				for _, v := range newImsiList {
-					if v == uint64(k) {
-						has = true
-					}
-				}
-				if !has {
+				if !slices.Contains(newImsiList, uint64(k)) {
 					logger.SimappLog.Infoln("going to delete subscriber:", k)
 					b, err := json.Marshal("")
 					if err != nil {
@@ -835,11 +810,8 @@ func UpdateConfig(f string) error {
 						dispatchGroup(configMsgChan, groupNew, modify_op)
 						// find all slices which are using this device group and mark them modified
 						for _, slice := range SimappConfig.Configuration.NetworkSlice {
-							for _, dg := range slice.DevGroups {
-								if groupOld.Name == dg {
-									slice.modified = true
-									break
-								}
+							if slices.Contains(slice.DevGroups, groupOld.Name) {
+								slice.modified = true
 							}
 						}
 					} else {
@@ -863,11 +835,8 @@ func UpdateConfig(f string) error {
 				dispatchGroup(configMsgChan, group, delete_op)
 				// find all slices which are using this device group and mark them modified
 				for _, slice := range SimappConfig.Configuration.NetworkSlice {
-					for _, dg := range slice.DevGroups {
-						if group.Name == dg {
-							slice.modified = true
-							break
-						}
+					if slices.Contains(slice.DevGroups, group.Name) {
+						slice.modified = true
 					}
 				}
 			}
@@ -924,7 +893,7 @@ func WatchConfig() {
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		logger.SimappLog.Infoln("config file changed:", e.Name)
 		if err := UpdateConfig("config/simapp.yaml"); err != nil {
-			logger.SimappLog.Errorln("error in loading updated configuration ", err)
+			logger.SimappLog.Errorln("error in loading updated configuration", err)
 		} else {
 			logger.SimappLog.Infoln("successfully updated configuration")
 		}
@@ -934,9 +903,10 @@ func WatchConfig() {
 
 func dispatchAllSubscribers(configMsgChan chan configMessage) {
 	logger.SimappLog.Infoln("number of subscriber ranges", len(SimappConfig.Configuration.Subscriber))
-	for o := 0; o < len(SimappConfig.Configuration.Subscriber); o++ {
-		subscribers := SimappConfig.Configuration.Subscriber[o]
-		logger.SimappLog.Infof("Subscribers: UeIdStart: %s, UeIdEnd: %s, PlmnId: %s, OPc: %s, OP: %s, Key: %s, SequenceNumber: %s", subscribers.UeIdStart, subscribers.UeIdEnd, subscribers.PlmnId, subscribers.OPc, subscribers.OP, subscribers.Key, subscribers.SequenceNumber)
+	for _, subscribers := range SimappConfig.Configuration.Subscriber {
+		logger.SimappLog.Infof("subscribers: UeIdStart: %s, UeIdEnd: %s, PlmnId: %s, OPc: %s, OP: %s, Key: %s, SequenceNumber: %s",
+			subscribers.UeIdStart, subscribers.UeIdEnd, subscribers.PlmnId, subscribers.OPc,
+			subscribers.OP, subscribers.Key, subscribers.SequenceNumber)
 		start, err := strconv.Atoi(subscribers.UeIdStart)
 		if err != nil {
 			logger.SimappLog.Errorln("error in Atoi with UeIdStart", err)
@@ -974,8 +944,8 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int)
 	logger.SimappLog.Infoln("group name", group.Name)
 	logger.SimappLog.Infoln("site name", group.SiteInfo)
 	logger.SimappLog.Infoln("imsis", group.Imsis)
-	for im := 0; im < len(group.Imsis); im++ {
-		logger.SimappLog.Debugln("imsi", group.Imsis[im])
+	for _, imsi := range group.Imsis {
+		logger.SimappLog.Debugln("imsi", imsi)
 	}
 	logger.SimappLog.Infoln("IpDomainName", group.IpDomainName)
 	ipDomain := group.IpDomain
@@ -1011,21 +981,21 @@ func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice,
 		logger.SimappLog.Warnln("do not configure network slice")
 		return
 	}
-	logger.SimappLog.Infoln("slice Name:", slice.Name)
+	logger.SimappLog.Infoln("slice name:", slice.Name)
 	logger.SimappLog.Infof("slice sst %v, sd %v", slice.SliceId.Sst, slice.SliceId.Sd)
-	logger.SimappLog.Infoln("slice site info", slice.SiteInfo)
+	logger.SimappLog.Infof("slice site info: %+v", slice.SiteInfo)
 	site := slice.SiteInfo
 	logger.SimappLog.Infoln("slice site name", site.SiteName)
 	logger.SimappLog.Infoln("slice gNB", len(site.Gnb))
-	for e := 0; e < len(site.Gnb); e++ {
-		logger.SimappLog.Infof("slice gNB[%v] = %s, tac: %d", e, site.Gnb[e].Name, site.Gnb[e].Tac)
+	for i, gnb := range site.Gnb {
+		logger.SimappLog.Infof("slice gNB[%v] = %s, tac: %d", i, gnb.Name, gnb.Tac)
 	}
-	logger.SimappLog.Infoln("slice Plmn", site.Plmn)
-	logger.SimappLog.Infoln("slice Upf", site.Upf)
+	logger.SimappLog.Infof("slice Plmn %+v", site.Plmn)
+	logger.SimappLog.Infof("slice Upf %+v", site.Upf)
 
 	logger.SimappLog.Infoln("slice device groups", slice.DevGroups)
-	for im := 0; im < len(slice.DevGroups); im++ {
-		logger.SimappLog.Infoln("attached device groups", slice.DevGroups[im])
+	for _, devGroup := range slice.DevGroups {
+		logger.SimappLog.Infoln("attached device group", devGroup)
 	}
 
 	b, err := json.Marshal(slice)
