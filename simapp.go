@@ -67,6 +67,7 @@ type DevGroup struct {
 	Name         string     `yaml:"name,omitempty"`
 	SiteInfo     string     `yaml:"site-info,omitempty" json:"site-info,omitempty"`
 	Imsis        []string   `yaml:"imsis,omitempty" json:"imsis,omitempty"`
+	Msisdns      []string   `yaml:"msisdns,omitempty" json:"msisdns,omitempty"`
 	IpDomainName string     `yaml:"ip-domain-name,omitempty" json:"ip-domain-name,omitempty"`
 	IpDomains    []IpDomain `yaml:"ip-domains,omitempty" json:"ip-domains,omitempty"`
 	visited      bool
@@ -586,6 +587,13 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 		logger.SimappLog.Infoln("number of Imsis changed")
 		return true
 	}
+
+	// Compare MSISDN list length
+	if !reflect.DeepEqual(groupNew.Msisdns, groupOld.Msisdns) {
+		logger.SimappLog.Infoln("msisdns list has changed")
+		return true
+	}
+
 	var allimsiNew string
 	for _, imsi := range groupNew.Imsis {
 		allimsiNew = allimsiNew + imsi
