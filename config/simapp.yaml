@@ -1,17 +1,16 @@
 # SPDX-FileCopyrightText: 2021 Open Networking Foundation <info@opennetworking.org>
 #
 # SPDX-License-Identifier: Apache-2.0
-# 
+#
 
+info:
+  description: SIMAPP initial local configuration
+  version: 1.0.0
+  http-version: 1
+logger:
+  APP:
+    debugLevel: info
 configuration:
-  info:
-    description: SIMAPP initial local configuration
-    version: 1.0.0
-    http-version: 1
-  logger:
-    APP:
-      ReportCaller: false
-      debugLevel: info
   subscribers:
   - ueId-start: 123456789123458
     ueId-end: 123456789123458
@@ -62,7 +61,7 @@ configuration:
     slice-id:
       sd: 65565
       sst: 255
-    site-device-group: 
+    site-device-group:
     - "iot-camera"
     application-filtering-rules:
     - rule-name: rule1
@@ -72,7 +71,8 @@ configuration:
       app-mbr-uplink:   100 #100kbps
       app-mbr-downlink: 2000 #2Mbps
       bitrate-unit: Kbps
-      traffic-class : "silver" #if same as APN-AMBR then its default bearer rule
+      traffic-class:
+        name: "silver" #if same as APN-AMBR then its default bearer rule
     - rule-name: rule2
       priority: 15
       action: "permit"
@@ -99,7 +99,7 @@ configuration:
         arp: 6
         pdb: 300
         pelr: 6
-      rule-trigger: api  #dont create this bearer immediately. Wait for API call 
+      rule-trigger: api  #dont create this bearer immediately. Wait for API call
     - rule-name: rule4
       priority: 35
       action: "permit"
