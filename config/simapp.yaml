@@ -80,7 +80,7 @@ configuration:
       app-mbr-uplink: 1 #1Mbps
       app-mbr-downlink: 5 #5Mbps
       bitrate-unit: Mbps
-      traffic-class : #if same as APN-AMBR then its default bearer rule
+      traffic-class: #if same as APN-AMBR then its default bearer rule
         name: "silver"
         qci: 9
         arp: 6
@@ -93,7 +93,7 @@ configuration:
       app-mbr-uplink: 120
       app-mbr-downlink: 520
       bitrate-unit: Kbps
-      traffic-class : #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+      traffic-class: #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
         name: "platinum"
         qci: 9
         arp: 6
@@ -107,7 +107,7 @@ configuration:
       app-mbr-uplink: 120000
       app-mbr-downlink: 520000
       bitrate-unit: bps
-      traffic-class : #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+      traffic-class: #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
         name: "gold"
         qci: 9
         arp: 6
@@ -121,7 +121,7 @@ configuration:
       app-mbr-uplink: 120000
       app-mbr-downlink: 520000
       bitrate-unit: bps
-      traffic-class : #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+      traffic-class: #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
         name: "diamond"
         qci: 9
         arp: 6
