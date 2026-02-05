@@ -617,6 +617,11 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 		return true
 	}
 
+	if len(groupNew.IpDomains) != len(groupOld.IpDomains) {
+		logger.SimappLog.Infoln("Number of IpDomains changed")
+		return true
+	}
+
 	for i := range groupNew.IpDomains {
 		if i >= len(groupOld.IpDomains) {
 			// If groupOld doesn't have enough IpDomains
@@ -641,21 +646,47 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 			return true
 		}
 
-		// Compare UeDnnQos if not nil
+		// Detect addition or removal of UeDnnQos
+		if (oldIpDomain.UeDnnQos == nil) != (newIpDomain.UeDnnQos == nil) {
+			logger.SimappLog.Infoln("UeDnnQos presence changed")
+			return true
+		}
+
 		if oldIpDomain.UeDnnQos != nil && newIpDomain.UeDnnQos != nil {
-			if oldIpDomain.UeDnnQos.TrafficClass != nil && newIpDomain.UeDnnQos.TrafficClass != nil {
+
+			// Detect addition or removal of TrafficClass
+			if (oldIpDomain.UeDnnQos.TrafficClass == nil) !=
+				(newIpDomain.UeDnnQos.TrafficClass == nil) {
+				logger.SimappLog.Infoln("TrafficClass presence changed")
+				return true
+			}
+
+			// Compare UeDnnQos bitrate fields
+			if oldIpDomain.UeDnnQos.Uplink != newIpDomain.UeDnnQos.Uplink ||
+				oldIpDomain.UeDnnQos.Downlink != newIpDomain.UeDnnQos.Downlink ||
+				oldIpDomain.UeDnnQos.BitRateUnit != newIpDomain.UeDnnQos.BitRateUnit {
+
+				logger.SimappLog.Infoln("UeDnnQos bitrate parameters changed")
+				return true
+			}
+
+			// Compare TrafficClass fields when both exist
+			if oldIpDomain.UeDnnQos.TrafficClass != nil &&
+				newIpDomain.UeDnnQos.TrafficClass != nil {
+
 				if oldIpDomain.UeDnnQos.TrafficClass.Name != newIpDomain.UeDnnQos.TrafficClass.Name ||
 					oldIpDomain.UeDnnQos.TrafficClass.Qci != newIpDomain.UeDnnQos.TrafficClass.Qci ||
 					oldIpDomain.UeDnnQos.TrafficClass.Arp != newIpDomain.UeDnnQos.TrafficClass.Arp ||
 					oldIpDomain.UeDnnQos.TrafficClass.Pdb != newIpDomain.UeDnnQos.TrafficClass.Pdb ||
 					oldIpDomain.UeDnnQos.TrafficClass.Pelr != newIpDomain.UeDnnQos.TrafficClass.Pelr {
-					logger.SimappLog.Infoln("TrafficClass or its properties changed")
+
+					logger.SimappLog.Infoln("TrafficClass properties changed")
 					return true
 				}
 			}
 		}
-	}
 
+	}
 	return false
 }
 

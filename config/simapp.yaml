@@ -38,23 +38,41 @@ configuration:
     imsis:
       - "123456789123456"
       - "123456789123457"
-    ip-domain-name: "pool1"
-    ip-domain-expanded:
-      dnn: internet
+    msisdns:
+      - "msisdn-9000000001"
+      - "msisdn-9000000002"
+    ip-domain-name: "IP-Domains"
+    ip-domains:
+      - dnn: ims
       dns-primary: 8.8.8.8
       dns-secondary: 8.8.4.4
       mtu: 1460
-      ue-ip-pool: 10.91.0.0/16
+      ue-ip-pool: 10.92.0.0/16
       ue-dnn-qos:
-        dnn-mbr-downlink: 20
-        dnn-mbr-uplink: 4
-        bitrate-unit: Mbps
+        dnn-mbr-downlink: 2400
+        dnn-mbr-uplink: 1200
+        bitrate-unit: kbps
         traffic-class:  #default bearer QCI/ARP
-          name: "platinum"
-          qci: 9
-          arp: 6
-          pdb: 300
+          name: "gold"
+          qci: 5
+          arp: 1
+          pdb: 100
           pelr: 6
+      - dnn: internet
+        dns-primary: 8.8.8.8
+        dns-secondary: 8.8.4.4
+        mtu: 1460
+        ue-ip-pool: 10.91.0.0/16
+        ue-dnn-qos:
+          dnn-mbr-downlink: 20
+          dnn-mbr-uplink: 4
+          bitrate-unit: Mbps
+          traffic-class:  #default bearer QCI/ARP
+            name: "platinum"
+            qci: 9
+            arp: 6
+            pdb: 300
+            pelr: 6
     site-info: "menlo"
   network-slices:
   - name: "slice1"
