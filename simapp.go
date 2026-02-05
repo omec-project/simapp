@@ -653,7 +653,6 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 		}
 
 		if oldIpDomain.UeDnnQos != nil && newIpDomain.UeDnnQos != nil {
-
 			// Detect addition or removal of TrafficClass
 			if (oldIpDomain.UeDnnQos.TrafficClass == nil) !=
 				(newIpDomain.UeDnnQos.TrafficClass == nil) {
@@ -665,7 +664,6 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 			if oldIpDomain.UeDnnQos.Uplink != newIpDomain.UeDnnQos.Uplink ||
 				oldIpDomain.UeDnnQos.Downlink != newIpDomain.UeDnnQos.Downlink ||
 				oldIpDomain.UeDnnQos.BitRateUnit != newIpDomain.UeDnnQos.BitRateUnit {
-
 				logger.SimappLog.Infoln("UeDnnQos bitrate parameters changed")
 				return true
 			}
@@ -673,19 +671,16 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 			// Compare TrafficClass fields when both exist
 			if oldIpDomain.UeDnnQos.TrafficClass != nil &&
 				newIpDomain.UeDnnQos.TrafficClass != nil {
-
 				if oldIpDomain.UeDnnQos.TrafficClass.Name != newIpDomain.UeDnnQos.TrafficClass.Name ||
 					oldIpDomain.UeDnnQos.TrafficClass.Qci != newIpDomain.UeDnnQos.TrafficClass.Qci ||
 					oldIpDomain.UeDnnQos.TrafficClass.Arp != newIpDomain.UeDnnQos.TrafficClass.Arp ||
 					oldIpDomain.UeDnnQos.TrafficClass.Pdb != newIpDomain.UeDnnQos.TrafficClass.Pdb ||
 					oldIpDomain.UeDnnQos.TrafficClass.Pelr != newIpDomain.UeDnnQos.TrafficClass.Pelr {
-
 					logger.SimappLog.Infoln("TrafficClass properties changed")
 					return true
 				}
 			}
 		}
-
 	}
 	return false
 }
