@@ -588,7 +588,7 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 		return true
 	}
 
-	// Compare MSISDN list length
+	// Compare MSISDN lists
 	if !reflect.DeepEqual(groupNew.Msisdns, groupOld.Msisdns) {
 		logger.SimappLog.Infoln("msisdns list has changed")
 		return true
@@ -1005,7 +1005,7 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int)
 			logger.SimappLog.Infoln("  IpDomain Mtu:", ipDomain.Mtu)
 			logger.SimappLog.Infoln("  IpDomain UePool:", ipDomain.UePool)
 
-			// Check for UeDnnQos field if it's populated
+			// Check if UeDnnQos field is populated
 			if ipDomain.UeDnnQos != nil {
 				logger.SimappLog.Infoln("  UeDnnQos:", ipDomain.UeDnnQos)
 			} else {

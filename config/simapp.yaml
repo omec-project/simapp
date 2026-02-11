@@ -44,20 +44,20 @@ configuration:
     ip-domain-name: "IP-Domains"
     ip-domains:
       - dnn: ims
-      dns-primary: 8.8.8.8
-      dns-secondary: 8.8.4.4
-      mtu: 1460
-      ue-ip-pool: 10.92.0.0/16
-      ue-dnn-qos:
-        dnn-mbr-downlink: 2400
-        dnn-mbr-uplink: 1200
-        bitrate-unit: kbps
-        traffic-class:  #default bearer QCI/ARP
-          name: "gold"
-          qci: 5
-          arp: 1
-          pdb: 100
-          pelr: 6
+        dns-primary: 8.8.8.8
+        dns-secondary: 8.8.4.4
+        mtu: 1460
+        ue-ip-pool: 10.92.0.0/16
+        ue-dnn-qos:
+          dnn-mbr-downlink: 2400
+          dnn-mbr-uplink: 1200
+          bitrate-unit: kbps
+          traffic-class:  #default bearer QCI/ARP
+            name: "platinum"
+            qci: 5
+            arp: 1
+            pdb: 100
+            pelr: 6
       - dnn: internet
         dns-primary: 8.8.8.8
         dns-secondary: 8.8.4.4
