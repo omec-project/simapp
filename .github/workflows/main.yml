@@ -126,6 +126,6 @@ jobs:
       checks: write
       id-token: write
       attestations: write
-    uses: omec-project/.github/.github/workflows/e2e-test.yml@d2c362a98ad0cb4911ea762e25109f71f2301d9e # v0.0.12
+    uses: omec-project/.github/.github/workflows/e2e-test.yml@4c4b1670edc14f7f8f95b6be5e1cb779b86b2716 # v0.0.16
     with:
       branch_name: ${{ github.ref }}
