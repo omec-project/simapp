@@ -64,11 +64,12 @@ type Configuration struct {
 }
 
 type DevGroup struct {
-	Name         string    `yaml:"name,omitempty"`
-	SiteInfo     string    `yaml:"site-info,omitempty" json:"site-info,omitempty"`
-	Imsis        []string  `yaml:"imsis,omitempty" json:"imsis,omitempty"`
-	IpDomainName string    `yaml:"ip-domain-name,omitempty" json:"ip-domain-name,omitempty"`
-	IpDomain     *IpDomain `yaml:"ip-domain-expanded,omitempty" json:"ip-domain-expanded,omitempty"`
+	Name         string     `yaml:"name,omitempty"`
+	SiteInfo     string     `yaml:"site-info,omitempty" json:"site-info,omitempty"`
+	Imsis        []string   `yaml:"imsis,omitempty" json:"imsis,omitempty"`
+	Msisdns      []string   `yaml:"msisdns,omitempty" json:"msisdns,omitempty"`
+	IpDomainName string     `yaml:"ip-domain-name,omitempty" json:"ip-domain-name,omitempty"`
+	IpDomains    []IpDomain `yaml:"ip-domains,omitempty" json:"ip-domains,omitempty"`
 	visited      bool
 }
 
@@ -586,6 +587,13 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 		logger.SimappLog.Infoln("number of Imsis changed")
 		return true
 	}
+
+	// Compare MSISDN lists
+	if !reflect.DeepEqual(groupNew.Msisdns, groupOld.Msisdns) {
+		logger.SimappLog.Infoln("msisdns list has changed")
+		return true
+	}
+
 	var allimsiNew string
 	for _, imsi := range groupNew.Imsis {
 		allimsiNew = allimsiNew + imsi
@@ -609,30 +617,71 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 		return true
 	}
 
-	oldipdomain := groupOld.IpDomain
-	newipdomain := groupNew.IpDomain
-	if oldipdomain.Dnn != newipdomain.Dnn {
+	if len(groupNew.IpDomains) != len(groupOld.IpDomains) {
+		logger.SimappLog.Infoln("Number of IpDomains changed")
 		return true
 	}
-	if oldipdomain.Mtu != newipdomain.Mtu {
-		return true
-	}
-	if oldipdomain.UePool != newipdomain.UePool {
-		return true
-	}
-	if oldipdomain.UeDnnQos != nil && newipdomain.UeDnnQos != nil {
-		if oldipdomain.UeDnnQos.TrafficClass != nil &&
-			newipdomain.UeDnnQos.TrafficClass != nil {
-			if (oldipdomain.UeDnnQos.TrafficClass.Name != newipdomain.UeDnnQos.TrafficClass.Name) ||
-				(oldipdomain.UeDnnQos.TrafficClass.Qci != newipdomain.UeDnnQos.TrafficClass.Qci) ||
-				(oldipdomain.UeDnnQos.TrafficClass.Arp != newipdomain.UeDnnQos.TrafficClass.Arp) ||
-				(oldipdomain.UeDnnQos.TrafficClass.Pdb != newipdomain.UeDnnQos.TrafficClass.Pdb) ||
-				(oldipdomain.UeDnnQos.TrafficClass.Pelr != newipdomain.UeDnnQos.TrafficClass.Pelr) {
+
+	for i := range groupNew.IpDomains {
+		if i >= len(groupOld.IpDomains) {
+			// If groupOld doesn't have enough IpDomains
+			return true
+		}
+
+		oldIpDomain := groupOld.IpDomains[i]
+		newIpDomain := groupNew.IpDomains[i]
+
+		if oldIpDomain.Dnn != newIpDomain.Dnn {
+			logger.SimappLog.Infoln("DNN changed")
+			return true
+		}
+
+		if oldIpDomain.Mtu != newIpDomain.Mtu {
+			logger.SimappLog.Infoln("MTU changed")
+			return true
+		}
+
+		if oldIpDomain.UePool != newIpDomain.UePool {
+			logger.SimappLog.Infoln("UePool changed")
+			return true
+		}
+
+		// Detect addition or removal of UeDnnQos
+		if (oldIpDomain.UeDnnQos == nil) != (newIpDomain.UeDnnQos == nil) {
+			logger.SimappLog.Infoln("UeDnnQos presence changed")
+			return true
+		}
+
+		if oldIpDomain.UeDnnQos != nil && newIpDomain.UeDnnQos != nil {
+			// Detect addition or removal of TrafficClass
+			if (oldIpDomain.UeDnnQos.TrafficClass == nil) !=
+				(newIpDomain.UeDnnQos.TrafficClass == nil) {
+				logger.SimappLog.Infoln("TrafficClass presence changed")
 				return true
+			}
+
+			// Compare UeDnnQos bitrate fields
+			if oldIpDomain.UeDnnQos.Uplink != newIpDomain.UeDnnQos.Uplink ||
+				oldIpDomain.UeDnnQos.Downlink != newIpDomain.UeDnnQos.Downlink ||
+				oldIpDomain.UeDnnQos.BitRateUnit != newIpDomain.UeDnnQos.BitRateUnit {
+				logger.SimappLog.Infoln("UeDnnQos bitrate parameters changed")
+				return true
+			}
+
+			// Compare TrafficClass fields when both exist
+			if oldIpDomain.UeDnnQos.TrafficClass != nil &&
+				newIpDomain.UeDnnQos.TrafficClass != nil {
+				if oldIpDomain.UeDnnQos.TrafficClass.Name != newIpDomain.UeDnnQos.TrafficClass.Name ||
+					oldIpDomain.UeDnnQos.TrafficClass.Qci != newIpDomain.UeDnnQos.TrafficClass.Qci ||
+					oldIpDomain.UeDnnQos.TrafficClass.Arp != newIpDomain.UeDnnQos.TrafficClass.Arp ||
+					oldIpDomain.UeDnnQos.TrafficClass.Pdb != newIpDomain.UeDnnQos.TrafficClass.Pdb ||
+					oldIpDomain.UeDnnQos.TrafficClass.Pelr != newIpDomain.UeDnnQos.TrafficClass.Pelr {
+					logger.SimappLog.Infoln("TrafficClass properties changed")
+					return true
+				}
 			}
 		}
 	}
-
 	return false
 }
 
@@ -948,12 +997,23 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int)
 		logger.SimappLog.Debugln("imsi", imsi)
 	}
 	logger.SimappLog.Infoln("IpDomainName", group.IpDomainName)
-	ipDomain := group.IpDomain
-	if group.IpDomain != nil {
-		logger.SimappLog.Infoln("IpDomain Dnn", ipDomain.Dnn)
-		logger.SimappLog.Infoln("IpDomain Dns Primary", ipDomain.DnsPrimary)
-		logger.SimappLog.Infoln("IpDomain Mtu", ipDomain.Mtu)
-		logger.SimappLog.Infoln("IpDomain UePool", ipDomain.UePool)
+	// Check if IpDomains is nil or not
+	if group.IpDomains != nil {
+		for _, ipDomain := range group.IpDomains {
+			logger.SimappLog.Infoln("  IpDomain Dnn:", ipDomain.Dnn)
+			logger.SimappLog.Infoln("  IpDomain Dns Primary:", ipDomain.DnsPrimary)
+			logger.SimappLog.Infoln("  IpDomain Mtu:", ipDomain.Mtu)
+			logger.SimappLog.Infoln("  IpDomain UePool:", ipDomain.UePool)
+
+			// Check if UeDnnQos field is populated
+			if ipDomain.UeDnnQos != nil {
+				logger.SimappLog.Infoln("  UeDnnQos:", ipDomain.UeDnnQos)
+			} else {
+				logger.SimappLog.Warnln("  UeDnnQos is nil")
+			}
+		}
+	} else {
+		logger.SimappLog.Warnln("  IpDomains is nil")
 	}
 	b, err := json.Marshal(group)
 	if err != nil {
