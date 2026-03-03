@@ -270,8 +270,8 @@ func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionE
 		client = &http.Client{
 			Transport: &http2.Transport{
 				AllowHTTP: true,
-				DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
-					return net.Dial(network, addr)
+				DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+					return (&net.Dialer{}).DialContext(ctx, network, addr)
 				},
 			},
 			Timeout: 5 * time.Second,
