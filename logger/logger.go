@@ -44,10 +44,6 @@ func init() {
 	SimappLog = log.Sugar().With("component", "SIMApp", "category", "App")
 }
 
-func GetLogger() *zap.Logger {
-	return log
-}
-
 // SetLogLevel: set the log level (panic|fatal|error|warn|info|debug)
 func SetLogLevel(level zapcore.Level) {
 	SimappLog.Infoln("set log level:", level)
