@@ -8,7 +8,7 @@ require (
 	github.com/urfave/cli/v3 v3.7.0
 	go.uber.org/zap v1.27.1
 	go.yaml.in/yaml/v4 v4.0.0-rc.4
-	golang.org/x/net v0.51.0
+	golang.org/x/net v0.52.0
 )
 
 require (
@@ -22,6 +22,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )
