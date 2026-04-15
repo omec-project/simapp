@@ -1,5 +1,5 @@
-# Copyright 2019-present Open Networking Foundation
 # Copyright 2024-present Intel Corporation
+# Copyright 2019-present Open Networking Foundation
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -8,6 +8,7 @@ FROM golang:1.26.2-bookworm@sha256:4f4ab2c90005e7e63cb631f0b4427f05422f241622ee3
 
 WORKDIR $GOPATH/src/simapp
 COPY . .
+ARG MAKEFLAGS
 RUN make all
 
 FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS simapp
@@ -32,10 +33,9 @@ LABEL org.opencontainers.image.source="${VCS_URL}" \
 
 ARG DEBUG_TOOLS
 
-# Install debug tools ~ 50MB (if DEBUG_TOOLS is set to true)
 RUN if [ "$DEBUG_TOOLS" = "true" ]; then \
-        apk update && apk add --no-cache -U gcompat vim strace net-tools curl netcat-openbsd bind-tools bash; \
-        fi
+        apk add --no-cache gcompat vim nano strace net-tools curl netcat-openbsd bind-tools bash; \
+    fi
 
 # Copy executable
 COPY --from=builder /go/src/simapp/bin/* /usr/local/bin/.
