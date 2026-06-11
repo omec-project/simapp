@@ -45,6 +45,7 @@ configuration:
     ip-domains:
       - dnn: ims
         dns-primary: 8.8.8.8
+        pcscf-primary: 10.10.10.10
         dns-secondary: 8.8.4.4
         mtu: 1460
         ue-ip-pool: 10.92.0.0/16

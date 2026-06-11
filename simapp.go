@@ -76,6 +76,7 @@ type DevGroup struct {
 type IpDomain struct {
 	Dnn          string        `yaml:"dnn,omitempty" json:"dnn,omitempty"`
 	DnsPrimary   string        `yaml:"dns-primary,omitempty" json:"dns-primary,omitempty"`
+	PcscfPrimary string        `yaml:"pcscf-primary,omitempty" json:"pcscf-primary,omitempty"`
 	DnsSecondary string        `yaml:"dns-secondary,omitempty" json:"dns-secondary,omitempty"`
 	Mtu          int           `yaml:"mtu,omitempty" json:"mtu,omitempty"`
 	UePool       string        `yaml:"ue-ip-pool,omitempty" json:"ue-ip-pool,omitempty"`
@@ -641,6 +642,11 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 			return true
 		}
 
+		if oldIpDomain.PcscfPrimary != newIpDomain.PcscfPrimary {
+			logger.SimappLog.Infoln("PcscfPrimary changed")
+			return true
+		}
+
 		if oldIpDomain.UePool != newIpDomain.UePool {
 			logger.SimappLog.Infoln("UePool changed")
 			return true
@@ -1002,6 +1008,7 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int)
 		for _, ipDomain := range group.IpDomains {
 			logger.SimappLog.Infoln("  IpDomain Dnn:", ipDomain.Dnn)
 			logger.SimappLog.Infoln("  IpDomain Dns Primary:", ipDomain.DnsPrimary)
+			logger.SimappLog.Infoln("  IpDomain Pcscf Primary:", ipDomain.PcscfPrimary)
 			logger.SimappLog.Infoln("  IpDomain Mtu:", ipDomain.Mtu)
 			logger.SimappLog.Infoln("  IpDomain UePool:", ipDomain.UePool)
 
