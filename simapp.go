@@ -463,6 +463,15 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 				}
 				return rsp, nil
 			}
+			// 4xx client errors indicate a bad request that retrying won't fix
+			if rsp.StatusCode >= 400 && rsp.StatusCode < 500 {
+				logger.SimappLog.Errorf("http rsp client error [%s], not retrying", http.StatusText(rsp.StatusCode))
+				err = req.Body.Close()
+				if err != nil {
+					logger.SimappLog.Errorln(err)
+				}
+				return rsp, fmt.Errorf("client error %d: %s", rsp.StatusCode, http.StatusText(rsp.StatusCode))
+			}
 			nextInterval := getNextBackoffInterval(retries, 2)
 			logger.SimappLog.Infof("http rsp error [%s], retrying after %d sec", http.StatusText(rsp.StatusCode), nextInterval)
 			err = rsp.Body.Close()
@@ -496,14 +505,15 @@ func waitForWebui(subProvisionEndpt SubProvisionEndpt, subProxyEndpt SubProxyEnd
 			time.Sleep(2 * time.Second)
 			continue
 		}
-		rsp.Body.Close()
-		if rsp.StatusCode >= 500 {
-			logger.SimappLog.Infof("webui returned status %d, retrying in 2 seconds...", rsp.StatusCode)
-			time.Sleep(2 * time.Second)
-			continue
+		if err := rsp.Body.Close(); err != nil {
+			logger.SimappLog.Errorf("failed to close readiness response body: %v", err)
 		}
-		logger.SimappLog.Infoln("webui is ready, starting message processing")
-		return
+		if rsp.StatusCode >= 200 && rsp.StatusCode < 300 {
+			logger.SimappLog.Infoln("webui is ready, starting message processing")
+			return
+		}
+		logger.SimappLog.Infof("webui returned status %d, retrying in 2 seconds...", rsp.StatusCode)
+		time.Sleep(2 * time.Second)
 	}
 }
 
