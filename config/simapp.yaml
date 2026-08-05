@@ -11,6 +11,7 @@ logger:
   APP:
     debugLevel: info
 configuration:
+  max-workers: 50
   subscribers:
   - ueId-start: 123456789123458
     ueId-end: 123456789123458
