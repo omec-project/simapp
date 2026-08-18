@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-
 info:
   description: SIMAPP initial local configuration
   version: 1.0.0
@@ -13,20 +12,20 @@ logger:
 configuration:
   max-workers: 50
   subscribers:
-  - ueId-start: 123456789123458
-    ueId-end: 123456789123458
-    plmnId: 20893
-    opc: 8e27b6af0e692e750f32667a3b14605d
-    op: ""
-    key: 8baf473f2f8fd09487cccbd7097c6862
-    sequenceNumber: 16f3b3f70fc2
-  - ueId-start: 123456789123460
-    ueId-end: 123456789123465
-    plmnId: 222222
-    opc: 22222222222222222222222222222222
-    op: ""
-    key: 22222222222222222222222222222222
-    sequenceNumber: 222222222
+    - ueId-start: 123456789123458
+      ueId-end: 123456789123458
+      plmnId: 20893
+      opc: 8e27b6af0e692e750f32667a3b14605d
+      op: ""
+      key: 8baf473f2f8fd09487cccbd7097c6862
+      sequenceNumber: 16f3b3f70fc2
+    - ueId-start: 123456789123460
+      ueId-end: 123456789123465
+      plmnId: 222222
+      opc: 22222222222222222222222222222222
+      op: ""
+      key: 22222222222222222222222222222222
+      sequenceNumber: 222222222
   provision-network-slice: false
   sub-provision-endpt: #points to sdcore endpoint
     addr: webui #should be webui for 5G and config4g for 4G
@@ -35,132 +34,132 @@ configuration:
     addr: subproxy.roc.xxx #should be set to ROC subscriber proxy
     port: 5000
   device-groups:
-  - name:  "iot-camera"
-    imsis:
-      - "123456789123456"
-      - "123456789123457"
-    msisdns:
-      - "msisdn-9000000001"
-      - "msisdn-9000000002"
-    ip-domain-name: "IP-Domains"
-    ip-domains:
-      - dnn: ims
-        dns-primary: 8.8.8.8
-        pcscf-primary: 10.10.10.10
-        dns-secondary: 8.8.4.4
-        mtu: 1460
-        ue-ip-pool: 10.92.0.0/16
-        ue-dnn-qos:
-          dnn-mbr-downlink: 2400
-          dnn-mbr-uplink: 1200
-          bitrate-unit: kbps
-          traffic-class:  #default bearer QCI/ARP
-            name: "platinum"
-            qci: 5
-            arp: 1
-            pdb: 100
-            pelr: 6
-      - dnn: internet
-        dns-primary: 8.8.8.8
-        dns-secondary: 8.8.4.4
-        mtu: 1460
-        ue-ip-pool: 10.91.0.0/16
-        ue-dnn-qos:
-          dnn-mbr-downlink: 20
-          dnn-mbr-uplink: 4
+    - name: "iot-camera"
+      imsis:
+        - "123456789123456"
+        - "123456789123457"
+      msisdns:
+        - "msisdn-9000000001"
+        - "msisdn-9000000002"
+      ip-domain-name: "IP-Domains"
+      ip-domains:
+        - dnn: ims
+          dns-primary: 8.8.8.8
+          pcscf-primary: 10.10.10.10
+          dns-secondary: 8.8.4.4
+          mtu: 1460
+          ue-ip-pool: 10.92.0.0/16
+          ue-dnn-qos:
+            dnn-mbr-downlink: 2400
+            dnn-mbr-uplink: 1200
+            bitrate-unit: kbps
+            traffic-class: #default bearer QCI/ARP
+              name: "platinum"
+              qci: 5
+              arp: 1
+              pdb: 100
+              pelr: 6
+        - dnn: internet
+          dns-primary: 8.8.8.8
+          dns-secondary: 8.8.4.4
+          mtu: 1460
+          ue-ip-pool: 10.91.0.0/16
+          ue-dnn-qos:
+            dnn-mbr-downlink: 20
+            dnn-mbr-uplink: 4
+            bitrate-unit: Mbps
+            traffic-class: #default bearer QCI/ARP
+              name: "platinum"
+              qci: 9
+              arp: 6
+              pdb: 300
+              pelr: 6
+      site-info: "menlo"
+  network-slices:
+    - name: "slice1"
+      slice-id:
+        sd: 65565
+        sst: 255
+      site-device-group:
+        - "iot-camera"
+      application-filtering-rules:
+        - rule-name: rule1
+          priority: 25
+          action: "permit"
+          endpoint: 0.0.0.0/0
+          app-mbr-uplink: 100 #100kbps
+          app-mbr-downlink: 2000 #2Mbps
+          bitrate-unit: Kbps
+          traffic-class:
+            name: "silver" #if same as APN-AMBR then its default bearer rule
+        - rule-name: rule2
+          priority: 15
+          action: "permit"
+          endpoint: 8.8.8.8/32
+          app-mbr-uplink: 1 #1Mbps
+          app-mbr-downlink: 5 #5Mbps
           bitrate-unit: Mbps
-          traffic-class:  #default bearer QCI/ARP
+          traffic-class: #if same as APN-AMBR then its default bearer rule
+            name: "silver"
+            qci: 9
+            arp: 6
+            pdb: 300
+            pelr: 6
+        - rule-name: rule3
+          priority: 25
+          action: "permit"
+          endpoint: 8.8.8.4/32
+          app-mbr-uplink: 120
+          app-mbr-downlink: 520
+          bitrate-unit: Kbps
+          traffic-class: #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
             name: "platinum"
             qci: 9
             arp: 6
             pdb: 300
             pelr: 6
-    site-info: "menlo"
-  network-slices:
-  - name: "slice1"
-    slice-id:
-      sd: 65565
-      sst: 255
-    site-device-group:
-    - "iot-camera"
-    application-filtering-rules:
-    - rule-name: rule1
-      priority: 25
-      action: "permit"
-      endpoint: 0.0.0.0/0
-      app-mbr-uplink:   100 #100kbps
-      app-mbr-downlink: 2000 #2Mbps
-      bitrate-unit: Kbps
-      traffic-class:
-        name: "silver" #if same as APN-AMBR then its default bearer rule
-    - rule-name: rule2
-      priority: 15
-      action: "permit"
-      endpoint: 8.8.8.8/32
-      app-mbr-uplink: 1 #1Mbps
-      app-mbr-downlink: 5 #5Mbps
-      bitrate-unit: Mbps
-      traffic-class: #if same as APN-AMBR then its default bearer rule
-        name: "silver"
-        qci: 9
-        arp: 6
-        pdb: 300
-        pelr: 6
-    - rule-name: rule3
-      priority: 25
-      action: "permit"
-      endpoint: 8.8.8.4/32
-      app-mbr-uplink: 120
-      app-mbr-downlink: 520
-      bitrate-unit: Kbps
-      traffic-class: #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
-        name: "platinum"
-        qci: 9
-        arp: 6
-        pdb: 300
-        pelr: 6
-      rule-trigger: api  #dont create this bearer immediately. Wait for API call
-    - rule-name: rule4
-      priority: 35
-      action: "permit"
-      endpoint: 1.1.1.1/32
-      app-mbr-uplink: 120000
-      app-mbr-downlink: 520000
-      bitrate-unit: bps
-      traffic-class: #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
-        name: "gold"
-        qci: 9
-        arp: 6
-        pdb: 300
-        pelr: 6
-      rule-trigger: "timer,10"  #dont create this bearer immediately. Create after 10 sec time.
-    - rule-name: rule5
-      priority: 45
-      action: "permit"
-      endpoint: 1.1.1.2/32
-      app-mbr-uplink: 120000
-      app-mbr-downlink: 520000
-      bitrate-unit: bps
-      traffic-class: #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
-        name: "diamond"
-        qci: 9
-        arp: 6
-        pdb: 300
-        pelr: 6
-      rule-trigger: "timer,0"  #immeidate creation of this bearer immediately. Create after 10 sec time.
-    qos:
-      uplink: 2   #2Mbps
-      downlink: 5 #5Mbps
-      bitrate-unit: Mbps
-      traffic-class: "silver" #default bearer QCI/ARP
-    site-info:
-      gNodeBs:
-      - name: menlo-gnb1
-        tac: 1
-      plmn:
-        mcc: "315"
-        mnc: "010"
-      site-name: menlo
-      upf:
-        upf-name: upf.menlo.aetherproject.org
-        upf-port: 8805
+          rule-trigger: api #dont create this bearer immediately. Wait for API call
+        - rule-name: rule4
+          priority: 35
+          action: "permit"
+          endpoint: 1.1.1.1/32
+          app-mbr-uplink: 120000
+          app-mbr-downlink: 520000
+          bitrate-unit: bps
+          traffic-class: #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+            name: "gold"
+            qci: 9
+            arp: 6
+            pdb: 300
+            pelr: 6
+          rule-trigger: "timer,10" #dont create this bearer immediately. Create after 10 sec time.
+        - rule-name: rule5
+          priority: 45
+          action: "permit"
+          endpoint: 1.1.1.2/32
+          app-mbr-uplink: 120000
+          app-mbr-downlink: 520000
+          bitrate-unit: bps
+          traffic-class: #this will create new bearer if QCI/ARP combination is different than default QCI/ARP
+            name: "diamond"
+            qci: 9
+            arp: 6
+            pdb: 300
+            pelr: 6
+          rule-trigger: "timer,0" #immeidate creation of this bearer immediately. Create after 10 sec time.
+      qos:
+        uplink: 2 #2Mbps
+        downlink: 5 #5Mbps
+        bitrate-unit: Mbps
+        traffic-class: "silver" #default bearer QCI/ARP
+      site-info:
+        gNodeBs:
+          - name: menlo-gnb1
+            tac: 1
+        plmn:
+          mcc: "315"
+          mnc: "010"
+        site-name: menlo
+        upf:
+          upf-name: upf.menlo.aetherproject.org
+          upf-port: 8805
