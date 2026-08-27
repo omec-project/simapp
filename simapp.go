@@ -1114,6 +1114,8 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int,
 		logger.SimappLog.Warnln("do not configure device group")
 		return
 	}
+	groupCopy := *group
+	group = &groupCopy
 	if group.ImsiStart != "" || group.ImsiEnd != "" {
 		start, startErr := strconv.ParseUint(group.ImsiStart, 10, 64)
 		end, endErr := strconv.ParseUint(group.ImsiEnd, 10, 64)
@@ -1121,8 +1123,12 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int,
 			logger.SimappLog.Errorf("invalid IMSI range %q-%q for group %s", group.ImsiStart, group.ImsiEnd, group.Name)
 			return
 		}
-
-		group.Imsis = make([]string, 0, end-start+1)
+		count := end - start + 1
+		if count > uint64(^uint(0)>>1) {
+			logger.SimappLog.Errorf("IMSI range too large %q-%q for group %s", group.ImsiStart, group.ImsiEnd, group.Name)
+			return
+		}
+		group.Imsis = make([]string, 0, int(count))
 		for imsi := start; imsi <= end; imsi++ {
 			group.Imsis = append(group.Imsis, fmt.Sprintf("%015d", imsi))
 		}
