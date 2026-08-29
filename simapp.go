@@ -56,13 +56,13 @@ type Info struct {
 }
 
 type Configuration struct {
-	ConfigSliceDevGroup bool               `yaml:"provision-network-slice,omitempty"`
-	MaxWorkers          int                `yaml:"max-workers,omitempty"`
+	SubProvisionEndpt   *SubProvisionEndpt `yaml:"sub-provision-endpt,omitempty"`
+	SubProxyEndpt       *SubProxyEndpt     `yaml:"sub-proxy-endpt,omitempty"`
 	DevGroup            []*DevGroup        `yaml:"device-groups,omitempty"`
 	NetworkSlice        []*NetworkSlice    `yaml:"network-slices,omitempty"`
 	Subscriber          []*Subscriber      `yaml:"subscribers,omitempty"`
-	SubProvisionEndpt   *SubProvisionEndpt `yaml:"sub-provision-endpt,omitempty"`
-	SubProxyEndpt       *SubProxyEndpt     `yaml:"sub-proxy-endpt,omitempty"`
+	MaxWorkers          int                `yaml:"max-workers,omitempty"`
+	ConfigSliceDevGroup bool               `yaml:"provision-network-slice,omitempty"`
 }
 
 type DevGroup struct {
@@ -76,13 +76,13 @@ type DevGroup struct {
 }
 
 type IpDomain struct {
+	UeDnnQos     *UeDnnQosInfo `yaml:"ue-dnn-qos,omitempty" json:"ue-dnn-qos,omitempty"`
 	Dnn          string        `yaml:"dnn,omitempty" json:"dnn,omitempty"`
 	DnsPrimary   string        `yaml:"dns-primary,omitempty" json:"dns-primary,omitempty"`
 	PcscfPrimary string        `yaml:"pcscf-primary,omitempty" json:"pcscf-primary,omitempty"`
 	DnsSecondary string        `yaml:"dns-secondary,omitempty" json:"dns-secondary,omitempty"`
-	Mtu          int           `yaml:"mtu,omitempty" json:"mtu,omitempty"`
 	UePool       string        `yaml:"ue-ip-pool,omitempty" json:"ue-ip-pool,omitempty"`
-	UeDnnQos     *UeDnnQosInfo `yaml:"ue-dnn-qos,omitempty" json:"ue-dnn-qos,omitempty"`
+	Mtu          int           `yaml:"mtu,omitempty" json:"mtu,omitempty"`
 }
 
 type Subscriber struct {
@@ -122,10 +122,10 @@ type SliceId struct {
 }
 
 type UeDnnQosInfo struct {
+	TrafficClass *TrafficClassInfo `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
+	BitRateUnit  string            `yaml:"bitrate-unit,omitempty" json:"bitrate-unit,omitempty"`
 	Uplink       int               `yaml:"dnn-mbr-uplink,omitempty" json:"dnn-mbr-uplink,omitempty"`
 	Downlink     int               `yaml:"dnn-mbr-downlink,omitempty" json:"dnn-mbr-downlink,omitempty"`
-	BitRateUnit  string            `yaml:"bitrate-unit,omitempty" json:"bitrate-unit,omitempty"`
-	TrafficClass *TrafficClassInfo `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
 }
 
 type TrafficClassInfo struct {
@@ -137,10 +137,10 @@ type TrafficClassInfo struct {
 }
 
 type SiteInfo struct {
-	SiteName string `yaml:"site-name,omitempty" json:"site-name,omitempty"`
-	Gnb      []*Gnb `yaml:"gNodeBs,omitempty" json:"gNodeBs,omitempty"`
 	Plmn     *Plmn  `yaml:"plmn,omitempty"   json:"plmn,omitempty"`
 	Upf      *Upf   `yaml:"upf,omitempty" json:"upf,omitempty"`
+	SiteName string `yaml:"site-name,omitempty" json:"site-name,omitempty"`
+	Gnb      []*Gnb `yaml:"gNodeBs,omitempty" json:"gNodeBs,omitempty"`
 }
 
 type Gnb struct {
@@ -159,30 +159,18 @@ type Upf struct {
 }
 
 type ApplicationFilteringRules struct {
-	// Rule name
-	RuleName string `yaml:"rule-name,omitempty" json:"rule-name,omitempty"`
-	// priority
-	Priority int32 `yaml:"priority,omitempty" json:"priority,omitempty"`
-	// action
-	Action string `yaml:"action,omitempty" json:"action,omitempty"`
-	// Application Desination IP or network
-	Endpoint string `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
-	// protocol
-	Protocol int32 `yaml:"protocol,omitempty" json:"protocol,omitempty"`
-	// port range start
-	StartPort int32 `yaml:"dest-port-start,omitempty" json:"dest-port-start,omitempty"`
-	// port range end
-	EndPort int32 `yaml:"dest-port-end,omitempty" json:"dest-port-end,omitempty"`
-
-	AppMbrUplink int32 `yaml:"app-mbr-uplink,omitempty" json:"app-mbr-uplink,omitempty"`
-
-	AppMbrDownlink int32 `yaml:"app-mbr-downlink,omitempty" json:"app-mbr-downlink,omitempty"`
-
-	BitRateUnit string `yaml:"bitrate-unit,omitempty" json:"bitrate-unit,omitempty"`
-
-	TrafficClass *TrafficClassInfo `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
-
-	RuleTrigger string `yaml:"rule-trigger,omitempty" json:"rule-trigger,omitempty"`
+	TrafficClass   *TrafficClassInfo `yaml:"traffic-class,omitempty" json:"traffic-class,omitempty"`
+	RuleName       string            `yaml:"rule-name,omitempty" json:"rule-name,omitempty"`
+	Action         string            `yaml:"action,omitempty" json:"action,omitempty"`
+	Endpoint       string            `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
+	BitRateUnit    string            `yaml:"bitrate-unit,omitempty" json:"bitrate-unit,omitempty"`
+	RuleTrigger    string            `yaml:"rule-trigger,omitempty" json:"rule-trigger,omitempty"`
+	Priority       int32             `yaml:"priority,omitempty" json:"priority,omitempty"`
+	Protocol       int32             `yaml:"protocol,omitempty" json:"protocol,omitempty"`
+	StartPort      int32             `yaml:"dest-port-start,omitempty" json:"dest-port-start,omitempty"`
+	EndPort        int32             `yaml:"dest-port-end,omitempty" json:"dest-port-end,omitempty"`
+	AppMbrUplink   int32             `yaml:"app-mbr-uplink,omitempty" json:"app-mbr-uplink,omitempty"`
+	AppMbrDownlink int32             `yaml:"app-mbr-downlink,omitempty" json:"app-mbr-downlink,omitempty"`
 }
 
 const (
@@ -201,10 +189,10 @@ const httpProtocol = "http://"
 
 type configMessage struct {
 	msgPtr  *bytes.Buffer
-	msgType int
-	name    string
-	msgOp   int
 	wg      *sync.WaitGroup
+	name    string
+	msgType int
+	msgOp   int
 }
 
 func (msg configMessage) String() string {
@@ -235,7 +223,7 @@ var (
 	client        *http.Client
 )
 
-func InitConfigFactory(f string, configMsgChan chan configMessage, subProvisionEndpt *SubProvisionEndpt, subProxyEndpt *SubProxyEndpt) error {
+func InitConfigFactory(f string, subProvisionEndpt *SubProvisionEndpt, subProxyEndpt *SubProxyEndpt) error {
 	logger.SimappLog.Infoln("function called", f)
 	if content, err := os.ReadFile(f); err != nil {
 		logger.SimappLog.Infoln("readfile failed called", err)
@@ -355,7 +343,7 @@ func action(ctx context.Context, c *cli.Command) error {
 		return err
 	}
 
-	err = InitConfigFactory(absPath, configMsgChan, &subProvisionEndpt, &subProxyEndpt)
+	err = InitConfigFactory(absPath, &subProvisionEndpt, &subProxyEndpt)
 	if err != nil {
 		logger.SimappLog.Errorln(err)
 	}
