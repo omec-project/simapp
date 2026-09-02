@@ -1123,14 +1123,22 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int,
 			logger.SimappLog.Errorf("invalid IMSI range %q-%q for group %s", group.ImsiStart, group.ImsiEnd, group.Name)
 			return
 		}
-		count := end - start + 1
+		diff := end - start
+		if diff == ^uint64(0) {
+			logger.SimappLog.Errorf("IMSI range too large %q-%q for group %s", group.ImsiStart, group.ImsiEnd, group.Name)
+			return
+		}
+		count := diff + 1
 		if count > uint64(^uint(0)>>1) {
 			logger.SimappLog.Errorf("IMSI range too large %q-%q for group %s", group.ImsiStart, group.ImsiEnd, group.Name)
 			return
 		}
 		group.Imsis = make([]string, 0, int(count))
-		for imsi := start; imsi <= end; imsi++ {
+		for imsi := start; ; imsi++ {
 			group.Imsis = append(group.Imsis, fmt.Sprintf("%015d", imsi))
+			if imsi == end {
+				break
+			}
 		}
 	}
 	if group.MsisdnStart != "" || group.MsisdnEnd != "" {
