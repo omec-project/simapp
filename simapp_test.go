@@ -151,3 +151,42 @@ func TestDispatchGroupMsisdnRangeOverridesMsisdnList(t *testing.T) {
 		t.Fatal("dispatchGroup did not enqueue a message")
 	}
 }
+
+func TestCompareGroupDetectsRangeChanges(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*DevGroup)
+	}{
+		{
+			name: "imsi range",
+			mutate: func(group *DevGroup) {
+				group.ImsiEnd = "123456789123459"
+			},
+		},
+		{
+			name: "msisdn range",
+			mutate: func(group *DevGroup) {
+				group.MsisdnEnd = "msisdn-7000000004"
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			groupOld := &DevGroup{
+				Imsis:       []string{"123456789123451"},
+				ImsiStart:   "123456789123451",
+				ImsiEnd:     "123456789123453",
+				Msisdns:     []string{"msisdn-7000000001"},
+				MsisdnStart: "msisdn-7000000001",
+				MsisdnEnd:   "msisdn-7000000003",
+			}
+			groupNew := *groupOld
+			test.mutate(&groupNew)
+
+			if !compareGroup(&groupNew, groupOld) {
+				t.Fatalf("compareGroup returned false for %s change", test.name)
+			}
+		})
+	}
+}

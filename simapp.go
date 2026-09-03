@@ -682,8 +682,18 @@ func compareGroup(groupNew *DevGroup, groupOld *DevGroup) bool {
 		return true
 	}
 
+	if groupNew.ImsiStart != groupOld.ImsiStart || groupNew.ImsiEnd != groupOld.ImsiEnd {
+		logger.SimappLog.Infoln("imsi range changed")
+		return true
+	}
+
 	if len(groupNew.Imsis) != len(groupOld.Imsis) {
 		logger.SimappLog.Infoln("number of Imsis changed")
+		return true
+	}
+
+	if groupNew.MsisdnStart != groupOld.MsisdnStart || groupNew.MsisdnEnd != groupOld.MsisdnEnd {
+		logger.SimappLog.Infoln("msisdn range changed")
 		return true
 	}
 
@@ -1116,7 +1126,7 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int,
 	}
 	groupCopy := *group
 	group = &groupCopy
-	if group.ImsiStart != "" || group.ImsiEnd != "" {
+	if msgOp != delete_op && (group.ImsiStart != "" || group.ImsiEnd != "") {
 		if group.ImsiStart == "" || group.ImsiEnd == "" {
 			logger.SimappLog.Errorf("incomplete IMSI range %q-%q for group %s (both imsi-start and imsi-end are required)", group.ImsiStart, group.ImsiEnd, group.Name)
 			return
@@ -1145,7 +1155,7 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int,
 			}
 		}
 	}
-	if group.MsisdnStart != "" || group.MsisdnEnd != "" {
+	if msgOp != delete_op && (group.MsisdnStart != "" || group.MsisdnEnd != "") {
 		if group.MsisdnStart == "" || group.MsisdnEnd == "" {
 			logger.SimappLog.Errorf("incomplete MSISDN range %q-%q for group %s (both msisdn-start and msisdn-end are required)", group.MsisdnStart, group.MsisdnEnd, group.Name)
 			return
