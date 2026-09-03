@@ -154,8 +154,8 @@ func TestDispatchGroupMsisdnRangeOverridesMsisdnList(t *testing.T) {
 
 func TestCompareGroupDetectsRangeChanges(t *testing.T) {
 	tests := []struct {
-		name   string
 		mutate func(*DevGroup)
+		name   string
 	}{
 		{
 			name: "imsi range",
