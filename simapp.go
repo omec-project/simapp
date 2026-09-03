@@ -1148,10 +1148,23 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int,
 			logger.SimappLog.Errorf("invalid MSISDN range %q-%q for group %s", group.MsisdnStart, group.MsisdnEnd, group.Name)
 			return
 		}
+		diff := end - start
+		if diff == ^uint64(0) {
+			logger.SimappLog.Errorf("MSISDN range too large %q-%q for group %s", group.MsisdnStart, group.MsisdnEnd, group.Name)
+			return
+		}
+		count := diff + 1
+		if count > uint64(^uint(0)>>1) {
+			logger.SimappLog.Errorf("MSISDN range too large %q-%q for group %s", group.MsisdnStart, group.MsisdnEnd, group.Name)
+			return
+		}
 
-		group.Msisdns = make([]string, 0, end-start+1)
-		for msisdn := start; msisdn <= end; msisdn++ {
+		group.Msisdns = make([]string, 0, int(count))
+		for msisdn := start; ; msisdn++ {
 			group.Msisdns = append(group.Msisdns, fmt.Sprintf("%s%0*d", prefix, width, msisdn))
+			if msisdn == end {
+				break
+			}
 		}
 	}
 	logger.SimappLog.Infoln("group name", group.Name)
