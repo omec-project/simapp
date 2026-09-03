@@ -42,7 +42,7 @@ configuration:
         - "123456789123457"
       msisdn-start: "msisdn-9000000001" # Configure either (msisdn-start & msisdn-end) or msisdns; if both are set, the range takes precedence
       msisdn-end: "msisdn-9000000004"
-      msisdns: #If msisdn-start/msisdn-end is configured then it will take precedence
+      msisdns: # If msisdn-start/msisdn-end is configured then it will take precedence
         - "msisdn-9000000001"
         - "msisdn-9000000002"
       ip-domain-name: "IP-Domains"
