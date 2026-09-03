@@ -11,7 +11,7 @@ import (
 func TestDispatchGroupExpandsImsiRange(t *testing.T) {
 	SimappConfig = Config{Configuration: &Configuration{ConfigSliceDevGroup: true}}
 	group := &DevGroup{
-		Name:      "range-group",
+		Name:      "imsi-range-group",
 		ImsiStart: "123456789123456",
 		ImsiEnd:   "123456789123460",
 	}
@@ -83,7 +83,7 @@ func TestDispatchGroupImsiRangeOverridesImsiList(t *testing.T) {
 func TestDispatchGroupExpandsMsisdnRange(t *testing.T) {
 	SimappConfig = Config{Configuration: &Configuration{ConfigSliceDevGroup: true}}
 	group := &DevGroup{
-		Name:        "range-group",
+		Name:        "msisdn-range-group",
 		MsisdnStart: "msisdn-9000000001",
 		MsisdnEnd:   "msisdn-9000000005",
 	}
@@ -120,8 +120,8 @@ func TestDispatchGroupMsisdnRangeOverridesMsisdnList(t *testing.T) {
 	group := &DevGroup{
 		Name:        "range-group",
 		Msisdns:     []string{"msisdn-9999999999"},
-		MsisdnStart: "msisdn-9000000001",
-		MsisdnEnd:   "msisdn-9000000003",
+		MsisdnStart: "msisdn-8000000001",
+		MsisdnEnd:   "msisdn-8000000003",
 	}
 	configMessages := make(chan configMessage, 1)
 
@@ -134,7 +134,7 @@ func TestDispatchGroupMsisdnRangeOverridesMsisdnList(t *testing.T) {
 			t.Fatalf("unmarshal dispatched group: %v", err)
 		}
 
-		expectedMsisdns := []string{"msisdn-9000000001", "msisdn-9000000002", "msisdn-9000000003"}
+		expectedMsisdns := []string{"msisdn-8000000001", "msisdn-8000000002", "msisdn-8000000003"}
 		if len(dispatchedGroup.Msisdns) != len(expectedMsisdns) {
 			t.Fatalf("dispatched %d MSISDNs, want %d: %v", len(dispatchedGroup.Msisdns), len(expectedMsisdns), dispatchedGroup.Msisdns)
 		}

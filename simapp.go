@@ -1117,6 +1117,10 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int,
 	groupCopy := *group
 	group = &groupCopy
 	if group.ImsiStart != "" || group.ImsiEnd != "" {
+		if group.ImsiStart == "" || group.ImsiEnd == "" {
+			logger.SimappLog.Errorf("incomplete IMSI range %q-%q for group %s (both imsi-start and imsi-end are required)", group.ImsiStart, group.ImsiEnd, group.Name)
+			return
+		}
 		start, startErr := strconv.ParseUint(group.ImsiStart, 10, 64)
 		end, endErr := strconv.ParseUint(group.ImsiEnd, 10, 64)
 		if startErr != nil || endErr != nil || start > end {
@@ -1142,6 +1146,10 @@ func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int,
 		}
 	}
 	if group.MsisdnStart != "" || group.MsisdnEnd != "" {
+		if group.MsisdnStart == "" || group.MsisdnEnd == "" {
+			logger.SimappLog.Errorf("incomplete MSISDN range %q-%q for group %s (both msisdn-start and msisdn-end are required)", group.MsisdnStart, group.MsisdnEnd, group.Name)
+			return
+		}
 		prefix, start, width, startErr := splitNumericSuffix(group.MsisdnStart)
 		endPrefix, end, endWidth, endErr := splitNumericSuffix(group.MsisdnEnd)
 		if startErr != nil || endErr != nil || prefix != endPrefix || width != endWidth || start > end {

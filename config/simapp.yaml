@@ -35,14 +35,14 @@ configuration:
     port: 5000
   device-groups:
     - name: "iot-camera"
-      imsi-start: "123456789123456" #Either one of these parameters (imsi-start and imsi-end OR imsis) only configured
+      imsi-start: "123456789123456" # Configure either (imsi-start & imsi-end) or imsis; if both are set, the range takes precedence
       imsi-end: "123456789123459"
-      imsis: #If imsi-start/imst-end configured then it will take precedence
+      imsis: # If imsi-start/imsi-end is configured then it will take precedence
         - "123456789123456"
         - "123456789123457"
-      msisdn-start: "msisdn-9000000001" #Either one of these parameters (msisdn-start and msisdn-end OR msisdns) only configured
+      msisdn-start: "msisdn-9000000001" # Configure either (msisdn-start & msisdn-end) or msisdns; if both are set, the range takes precedence
       msisdn-end: "msisdn-9000000004"
-      msisdns: #If msisdn-start/msisdn-end configured then it will take precedence
+      msisdns: #If msisdn-start/msisdn-end is configured then it will take precedence
         - "msisdn-9000000001"
         - "msisdn-9000000002"
       ip-domain-name: "IP-Domains"
