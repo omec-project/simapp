@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha1"
-	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -32,7 +31,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.yaml.in/yaml/v4"
-	"golang.org/x/net/http2"
 )
 
 type Config struct {
@@ -263,15 +261,17 @@ func InitConfigFactory(f string, subProvisionEndpt *SubProvisionEndpt, subProxyE
 
 	// set http client
 	if SimappConfig.Info.HttpVersion == 2 {
-		client = &http.Client{
-			Transport: &http2.Transport{
-				AllowHTTP: true,
-				DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
-					return (&net.Dialer{}).DialContext(ctx, network, addr)
-				},
-				StrictMaxConcurrentStreams: false,
+		transport := &http.Transport{
+			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, network, addr)
 			},
-			Timeout: 30 * time.Second,
+		}
+		// allow cleartext HTTP/2 (h2c) since DialTLSContext dials a plain TCP connection
+		transport.Protocols = new(http.Protocols)
+		transport.Protocols.SetUnencryptedHTTP2(true)
+		client = &http.Client{
+			Transport: transport,
+			Timeout:   30 * time.Second,
 		}
 	} else {
 		transport := &http.Transport{
