@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -260,13 +259,19 @@ func InitConfigFactory(f string, subProvisionEndpt *SubProvisionEndpt, subProxyE
 	}
 
 	// set http client
-	if SimappConfig.Info.HttpVersion == 2 {
+	httpVersion := 1
+	if SimappConfig.Info != nil {
+		httpVersion = SimappConfig.Info.HttpVersion
+	}
+	if httpVersion == 2 {
 		transport := &http.Transport{
-			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return (&net.Dialer{}).DialContext(ctx, network, addr)
-			},
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 100,
+			MaxConnsPerHost:     0,
+			IdleConnTimeout:     90 * time.Second,
+			DisableKeepAlives:   false,
 		}
-		// allow cleartext HTTP/2 (h2c) since DialTLSContext dials a plain TCP connection
+		// h2c requires HTTP1 to stay unset; setting it would make the transport fall back to HTTP/1.1
 		transport.Protocols = new(http.Protocols)
 		transport.Protocols.SetUnencryptedHTTP2(true)
 		client = &http.Client{
