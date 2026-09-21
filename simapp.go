@@ -53,13 +53,12 @@ type Info struct {
 }
 
 type Configuration struct {
-	SubProvisionEndpt   *SubProvisionEndpt `yaml:"sub-provision-endpt,omitempty"`
-	SubProxyEndpt       *SubProxyEndpt     `yaml:"sub-proxy-endpt,omitempty"`
-	DevGroup            []*DevGroup        `yaml:"device-groups,omitempty"`
-	NetworkSlice        []*NetworkSlice    `yaml:"network-slices,omitempty"`
-	Subscriber          []*Subscriber      `yaml:"subscribers,omitempty"`
-	MaxWorkers          int                `yaml:"max-workers,omitempty"`
-	ConfigSliceDevGroup bool               `yaml:"provision-network-slice,omitempty"`
+	SubProvisionEndpt *SubProvisionEndpt `yaml:"sub-provision-endpt,omitempty"`
+	SubProxyEndpt     *SubProxyEndpt     `yaml:"sub-proxy-endpt,omitempty"`
+	DevGroup          []*DevGroup        `yaml:"device-groups,omitempty"`
+	NetworkSlice      []*NetworkSlice    `yaml:"network-slices,omitempty"`
+	Subscriber        []*Subscriber      `yaml:"subscribers,omitempty"`
+	MaxWorkers        int                `yaml:"max-workers,omitempty"`
 }
 
 type DevGroup struct {
@@ -1125,10 +1124,6 @@ func splitNumericSuffix(value string) (string, uint64, int, error) {
 }
 
 func dispatchGroup(configMsgChan chan configMessage, group *DevGroup, msgOp int, wg *sync.WaitGroup) {
-	if !SimappConfig.Configuration.ConfigSliceDevGroup {
-		logger.SimappLog.Warnln("do not configure device group")
-		return
-	}
 	groupCopy := *group
 	group = &groupCopy
 	if msgOp != delete_op && (group.ImsiStart != "" || group.ImsiEnd != "") {
@@ -1242,10 +1237,6 @@ func dispatchAllGroups(configMsgChan chan configMessage, wg *sync.WaitGroup) {
 }
 
 func dispatchNetworkSlice(configMsgChan chan configMessage, slice *NetworkSlice, msgOp int, wg *sync.WaitGroup) {
-	if !SimappConfig.Configuration.ConfigSliceDevGroup {
-		logger.SimappLog.Warnln("do not configure network slice")
-		return
-	}
 	logger.SimappLog.Infoln("slice name:", slice.Name)
 	logger.SimappLog.Infof("slice sst %v, sd %v", slice.SliceId.Sst, slice.SliceId.Sd)
 	logger.SimappLog.Infof("slice site info: %+v", slice.SiteInfo)

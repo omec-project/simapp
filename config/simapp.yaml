@@ -26,7 +26,6 @@ configuration:
       op: ""
       key: 22222222222222222222222222222222
       sequenceNumber: 222222222
-  provision-network-slice: false
   sub-provision-endpt: #points to sdcore endpoint
     addr: webui #should be webui for 5G and config4g for 4G
     port: 5000
