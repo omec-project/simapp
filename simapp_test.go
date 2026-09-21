@@ -9,7 +9,7 @@ import (
 )
 
 func TestDispatchGroupExpandsImsiRange(t *testing.T) {
-	SimappConfig = Config{Configuration: &Configuration{ConfigSliceDevGroup: true}}
+	SimappConfig = Config{Configuration: &Configuration{}}
 	group := &DevGroup{
 		Name:      "imsi-range-group",
 		ImsiStart: "123456789123456",
@@ -44,7 +44,7 @@ func TestDispatchGroupExpandsImsiRange(t *testing.T) {
 }
 
 func TestDispatchGroupImsiRangeOverridesImsiList(t *testing.T) {
-	SimappConfig = Config{Configuration: &Configuration{ConfigSliceDevGroup: true}}
+	SimappConfig = Config{Configuration: &Configuration{}}
 	group := &DevGroup{
 		Name:      "range-group",
 		Imsis:     []string{"999999999999999"},
@@ -81,7 +81,7 @@ func TestDispatchGroupImsiRangeOverridesImsiList(t *testing.T) {
 }
 
 func TestDispatchGroupExpandsMsisdnRange(t *testing.T) {
-	SimappConfig = Config{Configuration: &Configuration{ConfigSliceDevGroup: true}}
+	SimappConfig = Config{Configuration: &Configuration{}}
 	group := &DevGroup{
 		Name:        "msisdn-range-group",
 		MsisdnStart: "msisdn-9000000001",
@@ -116,7 +116,7 @@ func TestDispatchGroupExpandsMsisdnRange(t *testing.T) {
 }
 
 func TestDispatchGroupMsisdnRangeOverridesMsisdnList(t *testing.T) {
-	SimappConfig = Config{Configuration: &Configuration{ConfigSliceDevGroup: true}}
+	SimappConfig = Config{Configuration: &Configuration{}}
 	group := &DevGroup{
 		Name:        "range-group",
 		Msisdns:     []string{"msisdn-9999999999"},

@@ -17,10 +17,6 @@ point to sub-proxy (ROC Component). Also port needs to be changed accordingly
 
 ### Optionaly simapp can be used to configure network slices in the 4G/5G network functions as well
 - Update device-groups, network-slices as per your need
-- provision-network-slice should be set to true if you need simapp to configure
-slices as well
-- In case ROC is running in the deployment then network slices can be configured
-from ROC
 
 ## Reach out to us through
 1. #sdcore-dev channel in [ONF Community Slack](https://onf-community.slack.com/)
