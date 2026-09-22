@@ -12,8 +12,6 @@ SPDX-License-Identifier: Apache-2.0
 - Update subscriber range for your usecase
 - Make sure sub-provison-endpt points to webui (5g configpod service) or
 config4g (4G configpod service)
-- In case sub-proxy is running in the deployment then sub-proxy-endpt should
-point to sub-proxy (ROC Component). Also port needs to be changed accordingly
 
 ### Optionaly simapp can be used to configure network slices in the 4G/5G network functions as well
 - Update device-groups, network-slices as per your need

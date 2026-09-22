@@ -54,7 +54,6 @@ type Info struct {
 
 type Configuration struct {
 	SubProvisionEndpt *SubProvisionEndpt `yaml:"sub-provision-endpt,omitempty"`
-	SubProxyEndpt     *SubProxyEndpt     `yaml:"sub-proxy-endpt,omitempty"`
 	DevGroup          []*DevGroup        `yaml:"device-groups,omitempty"`
 	NetworkSlice      []*NetworkSlice    `yaml:"network-slices,omitempty"`
 	Subscriber        []*Subscriber      `yaml:"subscribers,omitempty"`
@@ -97,11 +96,6 @@ type Subscriber struct {
 }
 
 type SubProvisionEndpt struct {
-	Addr string `yaml:"addr,omitempty" json:"addr,omitempty"`
-	Port string `yaml:"port,omitempty" json:"port,omitempty"`
-}
-
-type SubProxyEndpt struct {
 	Addr string `yaml:"addr,omitempty" json:"addr,omitempty"`
 	Port string `yaml:"port,omitempty" json:"port,omitempty"`
 }
@@ -223,7 +217,7 @@ var (
 	client        *http.Client
 )
 
-func InitConfigFactory(f string, subProvisionEndpt *SubProvisionEndpt, subProxyEndpt *SubProxyEndpt) error {
+func InitConfigFactory(f string, subProvisionEndpt *SubProvisionEndpt) error {
 	logger.SimappLog.Infoln("function called", f)
 	if content, err := os.ReadFile(f); err != nil {
 		logger.SimappLog.Infoln("readfile failed called", err)
@@ -295,12 +289,6 @@ func InitConfigFactory(f string, subProvisionEndpt *SubProvisionEndpt, subProxyE
 	subProvisionEndpt.Addr = SimappConfig.Configuration.SubProvisionEndpt.Addr
 	subProvisionEndpt.Port = SimappConfig.Configuration.SubProvisionEndpt.Port
 
-	if SimappConfig.Configuration.SubProxyEndpt != nil && SimappConfig.Configuration.SubProxyEndpt.Addr != "" {
-		logger.SimappLog.Infof("subscriber proxy endpoint: %s:%s", SimappConfig.Configuration.SubProxyEndpt.Addr, SimappConfig.Configuration.SubProxyEndpt.Port)
-		subProxyEndpt.Addr = SimappConfig.Configuration.SubProxyEndpt.Addr
-		subProxyEndpt.Port = SimappConfig.Configuration.SubProxyEndpt.Port
-	}
-
 	viper.SetConfigFile(f)
 	viper.SetConfigType("yaml")
 	err := viper.ReadInConfig() // Find and read the config file
@@ -342,7 +330,6 @@ func action(ctx context.Context, c *cli.Command) error {
 	logger.SimappLog.Infoln("SIMApp started")
 	configMsgChan = make(chan configMessage, 100)
 	var subProvisionEndpt SubProvisionEndpt
-	var subProxyEndpt SubProxyEndpt
 
 	cfg := c.String("cfg")
 	absPath, err := filepath.Abs(cfg)
@@ -351,16 +338,16 @@ func action(ctx context.Context, c *cli.Command) error {
 		return err
 	}
 
-	err = InitConfigFactory(absPath, &subProvisionEndpt, &subProxyEndpt)
+	err = InitConfigFactory(absPath, &subProvisionEndpt)
 	if err != nil {
 		logger.SimappLog.Errorln(err)
 	}
 
-	go sendMessage(configMsgChan, subProvisionEndpt, subProxyEndpt)
+	go sendMessage(configMsgChan, subProvisionEndpt)
 	go WatchConfig()
 
 	// Wait for webui to be ready before dispatching any messages.
-	waitForWebui(subProvisionEndpt, subProxyEndpt)
+	waitForWebui(subProvisionEndpt)
 
 	// Provisioning must follow a strict order because the webconsole's sync logic
 	// (triggered on device-group/network-slice creation) checks whether subscriber
@@ -479,13 +466,9 @@ func sendHttpReqMsg(req *http.Request) (*http.Response, error) {
 	}
 }
 
-func waitForWebui(subProvisionEndpt SubProvisionEndpt, subProxyEndpt SubProxyEndpt) {
+func waitForWebui(subProvisionEndpt SubProvisionEndpt) {
 	ip := strings.TrimSpace(subProvisionEndpt.Addr)
 	readinessURL := httpProtocol + ip + ":" + subProvisionEndpt.Port + "/config/v1/device-group/"
-	if subProxyEndpt.Port != "" {
-		proxyIP := strings.TrimSpace(subProxyEndpt.Addr)
-		readinessURL = httpProtocol + proxyIP + ":" + subProxyEndpt.Port + "/config/v1/device-group/"
-	}
 
 	logger.SimappLog.Infoln("waiting for webui to be ready at", readinessURL)
 	for {
@@ -513,7 +496,7 @@ func waitForWebui(subProvisionEndpt SubProvisionEndpt, subProxyEndpt SubProxyEnd
 	}
 }
 
-func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt, subProxyEndpt SubProxyEndpt) {
+func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt) {
 	var devGroupHttpend string
 	var networkSliceHttpend string
 	var subscriberHttpend string
@@ -529,16 +512,6 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 	logger.SimappLog.Infoln("network slice http endpoint", networkSliceHttpend)
 	subscriberHttpend = httpProtocol + ip + ":" + subProvisionEndpt.Port + "/api/subscriber/imsi-"
 	logger.SimappLog.Infoln("subscriber http endpoint", subscriberHttpend)
-	baseDestUrl := subscriberHttpend
-	if subProxyEndpt.Port != "" {
-		ip := strings.TrimSpace(subProxyEndpt.Addr)
-		devGroupHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/config/v1/device-group/"
-		logger.SimappLog.Infoln("device trigger Proxy http endpoint", devGroupHttpend)
-		networkSliceHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/config/v1/network-slice/"
-		logger.SimappLog.Infoln("network slice Proxy http endpoint", networkSliceHttpend)
-		subscriberHttpend = httpProtocol + ip + ":" + subProxyEndpt.Port + "/api/subscriber/imsi-"
-		logger.SimappLog.Infoln("subscriber Proxy http endpoint", subscriberHttpend)
-	}
 
 	// Create a worker pool with configurable max concurrent requests
 	maxWorkers := SimappConfig.Configuration.MaxWorkers
@@ -559,7 +532,6 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 			defer func() { <-semaphore }() // Release semaphore
 
 			var httpend string
-			var destUrl string
 			logger.SimappLog.Debugln("received message from channel", msg)
 			switch msg.msgType {
 			case device_group:
@@ -568,7 +540,6 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 				httpend = networkSliceHttpend + msg.name
 			case subscriber:
 				httpend = subscriberHttpend + msg.name
-				destUrl = baseDestUrl + msg.name
 			}
 			var rsp *http.Response
 			var httpErr error
@@ -583,9 +554,6 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 					}
 
 					req.Header.Set("Content-Type", "application/json; charset=utf-8")
-					if subProxyEndpt.Port != "" {
-						req.Header.Add("Dest-Url", destUrl)
-					}
 					rsp, httpErr = sendHttpReqMsg(req)
 					if httpErr != nil {
 						logger.SimappLog.Errorf("post message [%v] returned error [%v]", httpend, httpErr.Error())
@@ -604,9 +572,6 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 					}
 					// set the request header Content-Type for json
 					req.Header.Set("Content-Type", "application/json; charset=utf-8")
-					if subProxyEndpt.Port != "" {
-						req.Header.Add("Dest-Url", destUrl)
-					}
 					rsp, httpErr = sendHttpReqMsg(req)
 					if httpErr != nil {
 						logger.SimappLog.Errorf("put message [%v] returned error [%v]", httpend, httpErr.Error())
@@ -625,9 +590,6 @@ func sendMessage(msgChan chan configMessage, subProvisionEndpt SubProvisionEndpt
 					}
 					// set the request header Content-Type for json
 					req.Header.Set("Content-Type", "application/json; charset=utf-8")
-					if subProxyEndpt.Port != "" {
-						req.Header.Add("Dest-Url", destUrl)
-					}
 					rsp, httpErr = sendHttpReqMsg(req)
 					if httpErr != nil {
 						logger.SimappLog.Errorf("delete message [%v] returned error [%v]", httpend, httpErr.Error())
