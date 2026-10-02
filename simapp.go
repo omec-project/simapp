@@ -11,16 +11,19 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -343,6 +346,11 @@ func action(ctx context.Context, c *cli.Command) error {
 		logger.SimappLog.Errorln(err)
 	}
 
+	// The /synchronize server, created up front so that a SIGTERM in any phase
+	// can shut it down.
+	syncServer := &http.Server{Addr: ":8080", ReadHeaderTimeout: 10 * time.Second}
+	handleTermination(syncServer)
+
 	go sendMessage(configMsgChan, subProvisionEndpt)
 	go WatchConfig()
 
@@ -377,13 +385,38 @@ func action(ctx context.Context, c *cli.Command) error {
 	logger.SimappLog.Infoln("phase 3 complete: network slices provisioned")
 
 	http.HandleFunc("/synchronize", syncConfig)
-	err = http.ListenAndServe(":8080", nil)
-	if err != nil {
+	err = syncServer.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		// Note: as per the `ListenAndServe` documentation: "ListenAndServe always returns a non-nil error."
 		logger.SimappLog.Errorln(err)
 	}
 	for {
 		time.Sleep(100 * time.Second)
+	}
+}
+
+// handleTermination stops simapp on SIGTERM (a pod delete or a rollout) or
+// Ctrl-C, in whatever phase it is: it shuts the /synchronize server down and
+// exits 0.
+func handleTermination(server *http.Server) {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		sig := <-signals
+		logger.SimappLog.Infof("received %v, terminating SIMApp", sig)
+		stopServer(server, 5*time.Second)
+		logger.SimappLog.Infoln("SIMApp terminated")
+		os.Exit(0)
+	}()
+}
+
+// stopServer shuts the server down, waiting at most timeout for requests in
+// flight. A server that was never started returns at once.
+func stopServer(server *http.Server, timeout time.Duration) {
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.SimappLog.Warnf("/synchronize server shutdown: %v", err)
 	}
 }
 
