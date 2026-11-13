@@ -7,7 +7,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/urfave/cli/v3 v3.14.0
 	go.uber.org/zap v1.28.0
-	go.yaml.in/yaml/v4 v4.0.0-rc.9
+	go.yaml.in/yaml/v4 v4.0.0
 )
 
 require (
