@@ -1,21 +1,18 @@
-// Copyright (c) 2026 Intel Corporation
+// Copyright (C) 2026 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-package main
+package provision
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
-	"net"
-	"net/http"
 	"testing"
-	"time"
+
+	"github.com/omec-project/simapp/internal/factory"
 )
 
 func TestDispatchGroupExpandsImsiRange(t *testing.T) {
-	SimappConfig = Config{Configuration: &Configuration{}}
-	group := &DevGroup{
+	factory.SimappConfig = factory.Config{Configuration: &factory.Configuration{}}
+	group := &factory.DevGroup{
 		Name:      "imsi-range-group",
 		ImsiStart: "123456789123456",
 		ImsiEnd:   "123456789123460",
@@ -26,7 +23,7 @@ func TestDispatchGroupExpandsImsiRange(t *testing.T) {
 
 	select {
 	case message := <-configMessages:
-		var dispatchedGroup DevGroup
+		var dispatchedGroup factory.DevGroup
 		if err := json.Unmarshal(message.msgPtr.Bytes(), &dispatchedGroup); err != nil {
 			t.Fatalf("unmarshal dispatched group: %v", err)
 		}
@@ -49,8 +46,8 @@ func TestDispatchGroupExpandsImsiRange(t *testing.T) {
 }
 
 func TestDispatchGroupImsiRangeOverridesImsiList(t *testing.T) {
-	SimappConfig = Config{Configuration: &Configuration{}}
-	group := &DevGroup{
+	factory.SimappConfig = factory.Config{Configuration: &factory.Configuration{}}
+	group := &factory.DevGroup{
 		Name:      "range-group",
 		Imsis:     []string{"999999999999999"},
 		ImsiStart: "123456789123456",
@@ -62,7 +59,7 @@ func TestDispatchGroupImsiRangeOverridesImsiList(t *testing.T) {
 
 	select {
 	case message := <-configMessages:
-		var dispatchedGroup DevGroup
+		var dispatchedGroup factory.DevGroup
 		if err := json.Unmarshal(message.msgPtr.Bytes(), &dispatchedGroup); err != nil {
 			t.Fatalf("unmarshal dispatched group: %v", err)
 		}
@@ -86,8 +83,8 @@ func TestDispatchGroupImsiRangeOverridesImsiList(t *testing.T) {
 }
 
 func TestDispatchGroupExpandsMsisdnRange(t *testing.T) {
-	SimappConfig = Config{Configuration: &Configuration{}}
-	group := &DevGroup{
+	factory.SimappConfig = factory.Config{Configuration: &factory.Configuration{}}
+	group := &factory.DevGroup{
 		Name:        "msisdn-range-group",
 		MsisdnStart: "msisdn-9000000001",
 		MsisdnEnd:   "msisdn-9000000005",
@@ -98,7 +95,7 @@ func TestDispatchGroupExpandsMsisdnRange(t *testing.T) {
 
 	select {
 	case message := <-configMessages:
-		var dispatchedGroup DevGroup
+		var dispatchedGroup factory.DevGroup
 		if err := json.Unmarshal(message.msgPtr.Bytes(), &dispatchedGroup); err != nil {
 			t.Fatalf("unmarshal dispatched group: %v", err)
 		}
@@ -121,8 +118,8 @@ func TestDispatchGroupExpandsMsisdnRange(t *testing.T) {
 }
 
 func TestDispatchGroupMsisdnRangeOverridesMsisdnList(t *testing.T) {
-	SimappConfig = Config{Configuration: &Configuration{}}
-	group := &DevGroup{
+	factory.SimappConfig = factory.Config{Configuration: &factory.Configuration{}}
+	group := &factory.DevGroup{
 		Name:        "range-group",
 		Msisdns:     []string{"msisdn-9999999999"},
 		MsisdnStart: "msisdn-8000000001",
@@ -134,7 +131,7 @@ func TestDispatchGroupMsisdnRangeOverridesMsisdnList(t *testing.T) {
 
 	select {
 	case message := <-configMessages:
-		var dispatchedGroup DevGroup
+		var dispatchedGroup factory.DevGroup
 		if err := json.Unmarshal(message.msgPtr.Bytes(), &dispatchedGroup); err != nil {
 			t.Fatalf("unmarshal dispatched group: %v", err)
 		}
@@ -159,18 +156,18 @@ func TestDispatchGroupMsisdnRangeOverridesMsisdnList(t *testing.T) {
 
 func TestCompareGroupDetectsRangeChanges(t *testing.T) {
 	tests := []struct {
-		mutate func(*DevGroup)
+		mutate func(*factory.DevGroup)
 		name   string
 	}{
 		{
 			name: "imsi range",
-			mutate: func(group *DevGroup) {
+			mutate: func(group *factory.DevGroup) {
 				group.ImsiEnd = "123456789123459"
 			},
 		},
 		{
 			name: "msisdn range",
-			mutate: func(group *DevGroup) {
+			mutate: func(group *factory.DevGroup) {
 				group.MsisdnEnd = "msisdn-7000000004"
 			},
 		},
@@ -178,7 +175,7 @@ func TestCompareGroupDetectsRangeChanges(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			groupOld := &DevGroup{
+			groupOld := &factory.DevGroup{
 				Imsis:       []string{"123456789123451"},
 				ImsiStart:   "123456789123451",
 				ImsiEnd:     "123456789123453",
@@ -193,41 +190,5 @@ func TestCompareGroupDetectsRangeChanges(t *testing.T) {
 				t.Fatalf("compareGroup returned false for %s change", test.name)
 			}
 		})
-	}
-}
-
-func TestStopServerEndsServing(t *testing.T) {
-	var listenConfig net.ListenConfig
-	listener, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	server := &http.Server{ReadHeaderTimeout: time.Second}
-	served := make(chan error, 1)
-	go func() { served <- server.Serve(listener) }()
-
-	stopServer(server, time.Second)
-
-	select {
-	case err := <-served:
-		if !errors.Is(err, http.ErrServerClosed) {
-			t.Errorf("expected http.ErrServerClosed, got %v", err)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("server still serving after stopServer")
-	}
-}
-
-func TestStopServerNeverStartedReturnsAtOnce(t *testing.T) {
-	server := &http.Server{Addr: "127.0.0.1:0", ReadHeaderTimeout: time.Second}
-	done := make(chan struct{})
-	go func() {
-		stopServer(server, 5*time.Second)
-		close(done)
-	}()
-	select {
-	case <-done:
-	case <-time.After(time.Second):
-		t.Fatal("stopServer blocked on a server that was never started")
 	}
 }
